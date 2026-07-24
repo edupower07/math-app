@@ -1,41 +1,52 @@
 <script>
 /* ============================================================
- *  名探偵！かずのひみつ  ―  フロントエンド
+ *  名探偵！かずのひみつ  ―  フロントエンド（レトロ捜査ファイル版）
  *
  *  構成:
- *    Server   … GAS 通信（無い環境では localStorage で代替）
- *    Engine   … 数の性質判定・ヒント生成・問題づくり
- *    Phases   … 単元フェーズ定義（解禁カテゴリ・数のはんい）
- *    Game / Highlight / Create / Group / Dex / Settings … 各画面
- *    UI / Nav … 演出・画面遷移
+ *    Server    … GAS 通信（無い環境では localStorage で代替）
+ *    Engine    … 数の性質判定・手がかり生成（基本＋単元）・問題づくり
+ *    Phases    … 単元フェーズ定義（解禁カテゴリ・数のはんい）
+ *    Game      … 能動的な推理（証拠を調べ、自分でタップして告発）
+ *    Highlight / Create / Group / Dex / Settings / HowTo … 各画面
+ *    Progress  … バッジ・ランク・クラウド保存
  * ============================================================ */
 
-/* ---------- 学習カテゴリの定義 ---------- */
+/* ---------- 学習カテゴリ（単元の手がかり） ---------- */
 var CATS = {
-  parity:   { name: '偶数・奇数', color: 'cat-parity', icon: '🔵', desc: '2でわりきれるかな？' },
-  multiple: { name: '倍数',       color: 'cat-multiple', icon: '🟢', desc: '◯の何ばいかな？' },
-  divisor:  { name: '約数',       color: 'cat-divisor', icon: '🔴', desc: '◯をわりきれるかな？' },
-  cmul:     { name: '公倍数',     color: 'cat-cmul', icon: '🟣', desc: '2つの数どちらの倍数？' },
-  cdiv:     { name: '公約数',     color: 'cat-cdiv', icon: '🟠', desc: '2つの数どちらもわる？' }
+  parity:   { name: '偶数・奇数', tag: '偶数・奇数', icon: '🔵' },
+  multiple: { name: '倍数',       tag: '倍数',       icon: '🟢' },
+  divisor:  { name: '約数',       tag: '約数',       icon: '🔴' },
+  cmul:     { name: '公倍数',     tag: '公倍数',     icon: '🟣' },
+  cdiv:     { name: '公約数',     tag: '公約数',     icon: '🟠' }
 };
 
 /* ---------- 単元フェーズ（解禁がふえていく） ---------- */
 var PHASES = [
-  { n: 1, name: '偶数・奇数',   cats: ['parity'], range: 50 },
-  { n: 2, name: '倍数',         cats: ['parity', 'multiple'], range: 50 },
-  { n: 3, name: '約数',         cats: ['parity', 'multiple', 'divisor'], range: 50 },
-  { n: 4, name: '公倍数',       cats: ['parity', 'multiple', 'divisor', 'cmul'], range: 100 },
-  { n: 5, name: '公約数',       cats: ['parity', 'multiple', 'divisor', 'cmul', 'cdiv'], range: 100 },
-  { n: 6, name: '名探偵認定',   cats: ['parity', 'multiple', 'divisor', 'cmul', 'cdiv'], range: 100 }
+  { n: 1, name: '偶数・奇数', cats: ['parity'], range: 50, desc: '2でわりきれる？わりきれない？' },
+  { n: 2, name: '倍数',       cats: ['parity', 'multiple'], range: 50, desc: '◯の何ばいかを見やぶれ' },
+  { n: 3, name: '約数',       cats: ['parity', 'multiple', 'divisor'], range: 50, desc: '◯をわりきる数はどれ？' },
+  { n: 4, name: '公倍数',     cats: ['parity', 'multiple', 'divisor', 'cmul'], range: 100, desc: '2つの数 両方の倍数をさがせ' },
+  { n: 5, name: '公約数',     cats: ['parity', 'multiple', 'divisor', 'cmul', 'cdiv'], range: 100, desc: '2つの数 両方をわる数をさがせ' },
+  { n: 6, name: '名探偵認定', cats: ['parity', 'multiple', 'divisor', 'cmul', 'cdiv'], range: 100, desc: 'すべての手がかりで総仕上げ' }
 ];
 
 /* ---------- 探偵ランク ---------- */
 var RANKS = [
   { min: 0,  icon: '🔰', name: '見習い探偵' },
-  { min: 3,  icon: '🔎', name: '探偵助手' },
-  { min: 7,  icon: '🕵️', name: '一人前探偵' },
-  { min: 13, icon: '🎩', name: '名探偵' },
-  { min: 20, icon: '👑', name: '名探偵マスター' }
+  { min: 3,  icon: '🎓', name: '三等探偵' },
+  { min: 8,  icon: '🕵️', name: '二等探偵' },
+  { min: 15, icon: '🎩', name: '一等探偵' },
+  { min: 25, icon: '🏆', name: '名探偵' },
+  { min: 40, icon: '👑', name: '伝説の名探偵' }
+];
+
+/* ---------- 探偵のひとこと（ホーム画面） ---------- */
+var LINES = [
+  '「手がかりは うそをつかない。」',
+  '「消えのこった数こそ、真実だ。」',
+  '「あわてるな。証拠を1つずつ、だ。」',
+  '「少ない手がかりで見やぶってこそ 名探偵。」',
+  '「数はすべてを知っている。」'
 ];
 
 /* ---------- アプリ状態 ---------- */
@@ -43,8 +54,12 @@ var APP = {
   phase: 1,
   cats: ['parity'],
   range: 50,
-  student: 'ゲスト探偵',
+  userId: '',
+  name: 'ゲスト探偵',
+  usingEmail: false,
   badges: 0,
+  solved: 0,
+  bestClues: 0,
   groupSession: ''
 };
 
@@ -59,43 +74,48 @@ var Server = {
     var self = this;
     return new Promise(function (resolve, reject) {
       if (!self.available()) { reject('no-gas'); return; }
-      google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(reject)[fn].apply(null, args || []);
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn].apply(null, args || []);
     });
   }
 };
 
 /* ============================================================
- *  Engine: 数の性質・ヒント
+ *  Engine: 数の性質・手がかり（基本＋単元）
  * ============================================================ */
 var Engine = {
   gcd: function (a, b) { while (b) { var t = b; b = a % b; a = t; } return a; },
+  digitsOf: function (n) { return String(n).length; },
 
-  /** ヒント記述子から {desc, cat, text, match} を作る */
+  /** 手がかり記述子から {desc, cat, tag, text, match} を作る */
   makeHint: function (d) {
-    var cat = d.category, text = '', match;
-    if (cat === 'parity') {
+    var cat = d.category, tag = '', text = '', match;
+    if (cat === 'basic') {
+      cat = 'basic';
+      if (d.kind === 'gt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 大きい'; match = function (n) { return n > d.v; }; }
+      else if (d.kind === 'lt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 小さい'; match = function (n) { return n < d.v; }; }
+      else if (d.kind === 'ones') { tag = '一の位'; text = '一の位は【' + d.d + '】'; match = function (n) { return n % 10 === d.d; }; }
+      else if (d.kind === 'digits') { tag = 'けた'; text = '【' + d.k + '】けたの数'; match = function (n) { return Engine.digitsOf(n) === d.k; }; }
+    } else if (cat === 'parity') {
       var isEven = d.parity === 'even';
-      text = 'ひみつの数は ' + (isEven ? '偶数（ぐうすう）' : '奇数（きすう）') + ' だよ';
+      tag = CATS.parity.tag;
+      text = '犯人の数は ' + (isEven ? '偶数（ぐうすう）' : '奇数（きすう）');
       match = function (n) { return (n % 2 === 0) === isEven; };
     } else if (cat === 'multiple') {
-      text = 'ひみつの数は ' + d.k + ' の倍数だよ';
+      tag = CATS.multiple.tag; text = '犯人の数は【' + d.k + '】の倍数';
       match = function (n) { return n % d.k === 0; };
     } else if (cat === 'divisor') {
-      text = 'ひみつの数は ' + d.k + ' の約数だよ';
+      tag = CATS.divisor.tag; text = '犯人の数は【' + d.k + '】の約数';
       match = function (n) { return d.k % n === 0; };
     } else if (cat === 'cmul') {
-      text = 'ひみつの数は ' + d.a + ' と ' + d.b + ' の公倍数だよ';
+      tag = CATS.cmul.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公倍数';
       match = function (n) { return n % d.a === 0 && n % d.b === 0; };
     } else if (cat === 'cdiv') {
-      text = 'ひみつの数は ' + d.a + ' と ' + d.b + ' の公約数だよ';
+      tag = CATS.cdiv.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公約数';
       match = function (n) { return d.a % n === 0 && d.b % n === 0; };
     }
-    return { desc: d, cat: cat, text: text, match: match };
+    return { desc: d, cat: cat, tag: tag, text: text, match: match };
   },
 
-  /** 1..range の中で、与えたヒント全部にあてはまる数の配列 */
   candidates: function (hints, range) {
     var out = [];
     for (var n = 1; n <= range; n++) {
@@ -106,30 +126,29 @@ var Engine = {
     return out;
   },
 
-  /** secret にあてはまるヒント候補プールを作る（解禁カテゴリ内） */
+  /** secret にあてはまる手がかりプールを作る（基本＋解禁済み単元） */
   buildPool: function (secret, cats, range) {
-    var pool = [];
-    var push = function (d) { pool.push(Engine.makeHint(d)); };
+    var pool = [], push = function (d) { pool.push(Engine.makeHint(d)); };
 
-    if (cats.indexOf('parity') >= 0) {
-      push({ category: 'parity', parity: secret % 2 === 0 ? 'even' : 'odd' });
-    }
-    if (cats.indexOf('multiple') >= 0) {
-      for (var k = 2; k <= 12; k++) { if (secret % k === 0 && k < secret) push({ category: 'multiple', k: k }); }
-    }
+    // --- 基本の手がかり（いつでも使える） ---
+    // 大小（切りのよい数で）
+    for (var g = 5; g < secret; g += 5) push({ category: 'basic', kind: 'gt', v: g });
+    for (var l = Math.ceil((secret + 1) / 5) * 5; l <= range; l += 5) push({ category: 'basic', kind: 'lt', v: l });
+    // 一の位（強い手がかり）
+    push({ category: 'basic', kind: 'ones', d: secret % 10 });
+    // けた数
+    if (range >= 10) push({ category: 'basic', kind: 'digits', k: Engine.digitsOf(secret) });
+
+    // --- 単元の手がかり ---
+    if (cats.indexOf('parity') >= 0) push({ category: 'parity', parity: secret % 2 === 0 ? 'even' : 'odd' });
+    if (cats.indexOf('multiple') >= 0) { for (var k = 2; k <= 12; k++) { if (secret % k === 0 && k < secret) push({ category: 'multiple', k: k }); } }
     if (cats.indexOf('divisor') >= 0) {
-      var nice = [12, 16, 18, 20, 24, 28, 30, 36, 40, 42, 48, 60, 72, 80, 90, 96, 100];
-      nice.forEach(function (m) { if (m <= range && m % secret === 0 && m > secret) push({ category: 'divisor', k: m }); });
+      [12, 16, 18, 20, 24, 28, 30, 36, 40, 42, 48, 60, 72, 80, 90, 96, 100].forEach(function (m) {
+        if (m <= range && m % secret === 0 && m > secret) push({ category: 'divisor', k: m });
+      });
     }
-    if (cats.indexOf('cmul') >= 0) {
-      for (var a = 2; a <= 6; a++) {
-        for (var b = a + 1; b <= 8; b++) {
-          if (secret % a === 0 && secret % b === 0) push({ category: 'cmul', a: a, b: b });
-        }
-      }
-    }
+    if (cats.indexOf('cmul') >= 0) { for (var a = 2; a <= 6; a++) { for (var b = a + 1; b <= 8; b++) { if (secret % a === 0 && secret % b === 0) push({ category: 'cmul', a: a, b: b }); } } }
     if (cats.indexOf('cdiv') >= 0) {
-      // secret を公約数にする2数（secret の倍数）を作る
       [[2, 3], [2, 5], [3, 4], [2, 4]].forEach(function (p) {
         var a = secret * p[0], b = secret * p[1];
         if (Engine.gcd(a, b) === secret) push({ category: 'cdiv', a: a, b: b });
@@ -138,49 +157,60 @@ var Engine = {
     return pool;
   },
 
-  /** プールから貪欲に選び、候補が1つになるヒント列を返す（最大4個） */
+  /**
+   * プールから貪欲に選び、候補が1つになる手がかり列を返す。
+   * 単元カテゴリ（preferUnit）を優先的に採用して「学習内容」を前面に出す。
+   */
   greedy: function (pool, range, maxHints) {
-    var chosen = [], remaining = pool.slice();
-    var current = null; // 現在の候補配列
-    for (var step = 0; step < (maxHints || 4); step++) {
-      var best = -1, bestCount = 1e9, bestCand = null;
-      for (var i = 0; i < remaining.length; i++) {
-        var trial = chosen.concat([remaining[i]]);
-        var cand = Engine.candidates(trial, range);
-        if (cand.length < bestCount && (!current || cand.length < current.length)) {
-          best = i; bestCount = cand.length; bestCand = cand;
-        }
-      }
-      if (best < 0) break; // これ以上減らせない
-      chosen.push(remaining[best]);
-      remaining.splice(best, 1);
-      current = bestCand;
+    var chosen = [], remaining = pool.slice(), current = null;
+    var isUnit = function (h) { return h.cat !== 'basic'; };
+    for (var step = 0; step < (maxHints || 5); step++) {
+      // まず単元カテゴリで一番よく絞れるものを探す
+      var pick = Engine._bestReducer(chosen, remaining, range, current, true);
+      if (pick.idx < 0) pick = Engine._bestReducer(chosen, remaining, range, current, false);
+      if (pick.idx < 0) break;
+      chosen.push(remaining[pick.idx]);
+      remaining.splice(pick.idx, 1);
+      current = pick.cand;
       if (current.length === 1) break;
     }
     return { hints: chosen, candidates: current || Engine.candidates(chosen, range) };
   },
+  _bestReducer: function (chosen, remaining, range, current, unitOnly) {
+    var best = -1, bestCount = 1e9, bestCand = null;
+    for (var i = 0; i < remaining.length; i++) {
+      if (unitOnly && remaining[i].cat === 'basic') continue;
+      var cand = Engine.candidates(chosen.concat([remaining[i]]), range);
+      if (cand.length < bestCount && (!current || cand.length < current.length)) {
+        best = i; bestCount = cand.length; bestCand = cand;
+      }
+    }
+    return { idx: best, cand: bestCand };
+  },
 
-  /** ひみつの数当て問題を生成する（一意になるまで数回ためす） */
+  /** ひみつの数当て問題を生成（必ず1つに絞れる） */
   generatePuzzle: function (cats, range) {
-    for (var attempt = 0; attempt < 60; attempt++) {
-      var secret = 2 + Math.floor(Math.random() * (range - 1)); // 2..range
+    for (var attempt = 0; attempt < 80; attempt++) {
+      var secret = 2 + Math.floor(Math.random() * (range - 1));
       var pool = Engine.buildPool(secret, cats, range);
-      if (pool.length < 1) continue;
-      var res = Engine.greedy(pool, range, 4);
-      if (res.candidates.length === 1 && res.candidates[0] === secret && res.hints.length >= 1) {
+      var res = Engine.greedy(pool, range, 5);
+      // 手がかりが少なすぎ／多すぎを避け、2〜5個で一意になるものを採用
+      if (res.candidates.length === 1 && res.candidates[0] === secret && res.hints.length >= 2 && res.hints.length <= 5) {
         return { secret: secret, range: range, hints: res.hints };
       }
     }
-    // フォールバック: 偶奇＋小さい倍数で無理やり作る
+    // 保険: 一意化できなければ、ぴたり範囲の手がかりで必ず1つにする
     var s = 2 + Math.floor(Math.random() * (range - 1));
     var pool2 = Engine.buildPool(s, cats, range);
-    var res2 = Engine.greedy(pool2, range, 4);
-    return { secret: s, range: range, hints: res2.hints, loose: res2.candidates.length !== 1 };
+    pool2.push(Engine.makeHint({ category: 'basic', kind: 'gt', v: s - 1 }));
+    pool2.push(Engine.makeHint({ category: 'basic', kind: 'lt', v: s + 1 }));
+    var res2 = Engine.greedy(pool2, range, 6);
+    return { secret: s, range: range, hints: res2.hints };
   }
 };
 
 /* ============================================================
- *  UI: 演出（トースト・オーバーレイ）と数表描画
+ *  UI: 演出と数表描画
  * ============================================================ */
 var UI = {
   toast: function (msg) {
@@ -189,15 +219,15 @@ var UI = {
     clearTimeout(UI._tt);
     UI._tt = setTimeout(function () { t.classList.remove('show'); }, 2200);
   },
-  overlay: function (icon, title, text) {
+  overlay: function (icon, title, text, stamp) {
     document.getElementById('ovIcon').textContent = icon;
     document.getElementById('ovTitle').textContent = title;
     document.getElementById('ovText').textContent = text;
+    document.getElementById('ovStamp').textContent = stamp || '解決';
     document.getElementById('overlay').classList.remove('hidden');
   },
   closeOverlay: function () { document.getElementById('overlay').classList.add('hidden'); },
 
-  /** 数表を描画。opts.onTap(n, cellEl) でタップ動作を追加できる */
   buildGrid: function (container, range, opts) {
     opts = opts || {};
     container.innerHTML = '';
@@ -206,16 +236,23 @@ var UI = {
       cell.className = 'cell';
       cell.textContent = n;
       cell.dataset.n = n;
+      if (opts.suspect) cell.classList.add('suspect');
       if (opts.onTap) {
         (function (num, el) { el.addEventListener('click', function () { opts.onTap(num, el); }); })(n, cell);
       }
       container.appendChild(cell);
     }
+  },
+  refreshRankChip: function () {
+    var rank = Progress.rankFor(APP.badges);
+    document.getElementById('rankIcon').textContent = rank.icon;
+    document.getElementById('rankName').textContent = rank.name;
+    document.getElementById('badgeCount').textContent = APP.badges;
   }
 };
 
 /* ============================================================
- *  Nav: 画面遷移
+ *  Nav
  * ============================================================ */
 var Nav = {
   go: function (name) {
@@ -244,34 +281,45 @@ var Home = {
   render: function () {
     var ph = PHASES[APP.phase - 1];
     document.getElementById('phaseBanner').innerHTML =
-      '📕 いまの単元：<b>フェーズ' + ph.n + '「' + ph.name + '」</b>　／　数のはんい 1〜' + ph.range;
+      '📁 いまの捜査：<b>フェーズ' + ph.n + '「' + ph.name + '」</b>　／　現場 1〜' + ph.range;
+    document.getElementById('heroFileNo').textContent = ('00' + (APP.solved + 1)).slice(-3);
+    document.getElementById('detectiveLine').textContent = LINES[APP.badges % LINES.length];
     UI.refreshRankChip();
   }
 };
 
 /* ============================================================
- *  Game: ひみつの数当て（メイン）
+ *  Game: 能動的な推理
  * ============================================================ */
 var Game = {
   puzzle: null,
   revealed: [],
   solved: false,
-  guessMode: false,
+  caseNo: 1,
 
-  newGame: function () {
-    Game.puzzle = Engine.generatePuzzle(APP.cats, APP.range);
+  newGame: function () { Game.setup(Engine.generatePuzzle(APP.cats, APP.range), APP.range); },
+
+  /** 任意の問題をセット（作問プレイ・認定試験でも使う） */
+  setup: function (puzzle, range, brief) {
+    Game.puzzle = puzzle;
     Game.revealed = [];
     Game.solved = false;
-    Game.guessMode = false;
-    document.getElementById('rangeLabel').textContent = '1–' + APP.range;
+    Game.caseNo++;
+    document.getElementById('caseNo').textContent = ('00' + Game.caseNo).slice(-3);
+    document.getElementById('rangeLabel2').textContent = range;
+    document.getElementById('caseBrief').textContent = brief ||
+      'この中に「ひみつの数」がひとりだけ かくれている。手がかりを1つずつ調べて、あやしい数を消していこう。わかったら数字をタップして告発だ！';
     document.getElementById('usedHints').textContent = '0';
-    UI.buildGrid(document.getElementById('numberGrid'), APP.range);
-    Game.updateCandidates();
+    document.getElementById('totalHints').textContent = puzzle.hints.length;
+    document.getElementById('candidateCount').textContent = range;
+    UI.buildGrid(document.getElementById('numberGrid'), range, {
+      suspect: true, onTap: function (n, el) { Game.accuse(n, el); }
+    });
     document.getElementById('clueList').innerHTML =
-      '<p class="muted" style="margin:4px 2px">「つぎの手がかりを見る」を押して、数をしぼりこもう！</p>';
+      '<div class="clue-placeholder">「次の手がかりを調べる」を押して、証拠を集めよう。</div>';
     var btn = document.getElementById('revealBtn');
-    btn.disabled = false;
-    btn.textContent = 'つぎの手がかりを見る';
+    btn.disabled = false; btn.textContent = '🔍 次の手がかりを調べる';
+    document.getElementById('accuseHint').textContent = 'わかったら、現場の数字をタップして告発！';
   },
 
   revealNext: function () {
@@ -284,89 +332,70 @@ var Game = {
     Game.revealed.push(hint);
 
     var card = document.createElement('div');
-    card.className = 'clue-card ' + CATS[hint.cat].color;
-    card.innerHTML = '<span class="cc-icon">' + CATS[hint.cat].icon + '</span><span>' + hint.text + '</span>';
+    card.className = 'clue-card cat-' + hint.cat;
+    card.innerHTML = '<span class="cc-tag">' + hint.tag + '</span><span class="cc-text">' + hint.text + '</span>';
     document.getElementById('clueList').appendChild(card);
 
     document.getElementById('usedHints').textContent = Game.revealed.length;
     Game.applyFilter();
 
     if (Game.revealed.length >= Game.puzzle.hints.length) {
-      document.getElementById('revealBtn').disabled = true;
+      var btn = document.getElementById('revealBtn');
+      btn.disabled = true; btn.textContent = '証拠は出そろった！';
+      document.getElementById('accuseHint').textContent = '証拠はすべて出た。犯人の数字をタップして告発せよ！';
     }
   },
 
   applyFilter: function () {
-    var cand = Engine.candidates(Game.revealed, APP.range);
+    var cand = Engine.candidates(Game.revealed, APP.rangeOverride || Game.puzzle.range);
     var alive = {};
     cand.forEach(function (n) { alive[n] = true; });
     var cells = document.querySelectorAll('#numberGrid .cell');
     cells.forEach(function (c) {
       var n = Number(c.dataset.n);
-      c.classList.remove('alive');
-      if (alive[n]) { c.classList.remove('dead'); }
-      else { c.classList.add('dead'); }
+      if (alive[n]) { c.classList.remove('dead'); if (!Game.solved) c.classList.add('suspect'); }
+      else { c.classList.add('dead'); c.classList.remove('suspect'); }
     });
     document.getElementById('candidateCount').textContent = cand.length;
-
-    if (cand.length === 1 && !Game.solved) {
-      Game.win(cand[0]);
-      return;
-    }
-    // 手がかりを出しきっても2つ以上のこる場合（例: 偶数・奇数だけのフェーズ）は
-    //「のこりの中からタップして当てる」モードに切りかえる
-    var allRevealed = Game.revealed.length >= Game.puzzle.hints.length;
-    if (allRevealed && cand.length > 1 && !Game.solved) {
-      Game.enableGuess();
-    }
   },
 
-  /** 候補が1つに絞れないとき、残りセルをタップして当てるモード */
-  enableGuess: function () {
-    if (Game.guessMode) return;
-    Game.guessMode = true;
-    UI.toast('のこりの中から「ひみつの数」をタップ！');
-    var cells = document.querySelectorAll('#numberGrid .cell');
-    cells.forEach(function (c) {
-      if (c.classList.contains('dead')) return;
-      c.classList.add('alive');
-      c.style.cursor = 'pointer';
-      c.addEventListener('click', Game._guessHandler);
-    });
-  },
-  _guessHandler: function (e) {
+  accuse: function (n, el) {
     if (Game.solved) return;
-    var n = Number(e.currentTarget.dataset.n);
-    if (n === Game.puzzle.secret) { Game.win(n); }
-    else { UI.toast('ちがうよ。もう一度さがそう！'); e.currentTarget.classList.add('dead'); }
+    if (el.classList.contains('dead')) { UI.toast('その数は手がかりで消えたよ'); return; }
+    if (n === Game.puzzle.secret) { Game.win(n, el); return; }
+    // 生き残っているが正解でない＝まだ手がかりが足りない
+    if (Game.revealed.length < Game.puzzle.hints.length) {
+      UI.toast('うーん、まだ断定できない。次の手がかりを調べよう！');
+    } else {
+      UI.toast('ちがうみたい。証拠を見直そう。');
+    }
   },
 
-  updateCandidates: function () {
-    document.getElementById('candidateCount').textContent = APP.range;
-  },
-
-  win: function (answer) {
+  win: function (answer, el) {
     Game.solved = true;
     document.getElementById('revealBtn').disabled = true;
     var cells = document.querySelectorAll('#numberGrid .cell');
     cells.forEach(function (c) {
+      c.classList.remove('suspect');
       if (Number(c.dataset.n) === answer) { c.classList.remove('dead'); c.classList.add('answer'); }
     });
-    Progress.award();
+    var used = Game.revealed.length, total = Game.puzzle.hints.length;
+    var sharp = used < total;
+    Progress.award(used);
+    var msg = 'ひみつの数は「' + answer + '」だ！\n調べた手がかり：' + used + ' / ' + total + '　🏅バッジ +1';
+    if (sharp) msg = '⚡するどい推理！\n' + msg;
     setTimeout(function () {
-      UI.overlay('🎉', 'かいけつ！', 'ひみつの数は「' + answer + '」だ！\n使った手がかり：' + Game.revealed.length + 'つ　バッジ +1');
-    }, 450);
+      UI.overlay('🕵️', sharp ? 'みごと解決！' : '事件かいけつ！', msg, '解決');
+    }, 500);
   }
 };
 
 /* ============================================================
- *  Highlight: 公倍数・公約数モード
+ *  Highlight: 重ねて分析（公倍数・公約数）
  * ============================================================ */
 var Highlight = {
   mode: 'multiple',
-  init: function () {
-    Highlight.render();
-  },
+  init: function () { Highlight.render(); },
   setMode: function (m) {
     Highlight.mode = m;
     document.getElementById('segMultiple').classList.toggle('active', m === 'multiple');
@@ -385,8 +414,7 @@ var Highlight = {
     var cells = document.querySelectorAll('#hlGrid .cell');
     var both = [];
     cells.forEach(function (c) {
-      var n = Number(c.dataset.n);
-      var inA, inB;
+      var n = Number(c.dataset.n), inA, inB;
       if (Highlight.mode === 'multiple') { inA = n % a === 0; inB = n % b === 0; }
       else { inA = a % n === 0; inB = b % n === 0; }
       c.classList.remove('hl-a', 'hl-b', 'hl-both');
@@ -394,16 +422,15 @@ var Highlight = {
       else if (inA) c.classList.add('hl-a');
       else if (inB) c.classList.add('hl-b');
     });
-
     var q = document.getElementById('hlQuestion');
     if (Highlight.mode === 'multiple') {
       var lcm = both.length ? both[0] : '（はんいの中に無いよ）';
-      q.innerHTML = '❓ ハイライト（' + a + 'と' + b + 'の公倍数）の中で <b>いちばん小さい数</b> は？<br>' +
+      q.innerHTML = '❓ ハイライト（' + a + 'と' + b + 'の公倍数）の中で <b>いちばん小さい数</b> は？' +
         '<div class="q-answer">👉 最小公倍数は <b>' + lcm + '</b>' +
-        (both.length ? '　／ このはんいの公倍数：' + both.join('、 ') : '') + '</div>';
+        (both.length ? '　／ 公倍数：' + both.join('、 ') : '') + '</div>';
     } else {
       var gcd = both.length ? both[both.length - 1] : '（無いよ）';
-      q.innerHTML = '❓ ハイライト（' + a + 'と' + b + 'の公約数）の中で <b>いちばん大きい数</b> は？<br>' +
+      q.innerHTML = '❓ ハイライト（' + a + 'と' + b + 'の公約数）の中で <b>いちばん大きい数</b> は？' +
         '<div class="q-answer">👉 最大公約数は <b>' + gcd + '</b>' +
         (both.length ? '　／ 公約数：' + both.join('、 ') : '') + '</div>';
     }
@@ -411,7 +438,7 @@ var Highlight = {
 };
 
 /* ============================================================
- *  Create: 作問モード
+ *  Create: 挑戦状づくり
  * ============================================================ */
 var Create = {
   rows: [],
@@ -424,29 +451,41 @@ var Create = {
     Create.recalc();
     Create.loadGallery();
   },
+  /** 追加できる手がかりの種類（基本＋解禁済み単元） */
+  addButtons: function () {
+    var btns = [
+      { key: 'gt', label: '＋ ◯より大きい', color: 'var(--c-basic)' },
+      { key: 'lt', label: '＋ ◯より小さい', color: 'var(--c-basic)' },
+      { key: 'ones', label: '＋ 一の位', color: 'var(--c-basic)' }
+    ];
+    APP.cats.forEach(function (cat) {
+      btns.push({ key: cat, label: '＋ ' + CATS[cat].name, color: 'var(--c-' + cat + ')' });
+    });
+    return btns;
+  },
   renderAddButtons: function () {
     var row = document.getElementById('addHintRow');
     row.innerHTML = '';
-    APP.cats.forEach(function (cat) {
-      var b = document.createElement('button');
-      b.className = 'add-chip ' + CATS[cat].color;
-      b.style.background = getComputedStyle(document.documentElement).getPropertyValue('--c-' + Create.varName(cat));
-      b.textContent = '＋ ' + CATS[cat].name;
-      b.onclick = function () { Create.addRow(cat); };
-      row.appendChild(b);
+    Create.addButtons().forEach(function (b) {
+      var el = document.createElement('button');
+      el.className = 'add-chip';
+      el.style.background = b.color;
+      el.textContent = b.label;
+      el.onclick = function () { Create.addRow(b.key); };
+      row.appendChild(el);
     });
   },
-  varName: function (cat) {
-    return { parity: 'parity', multiple: 'multiple', divisor: 'divisor', cmul: 'cmul', cdiv: 'cdiv' }[cat];
-  },
-  addRow: function (cat) {
-    if (Create.rows.length >= 4) { UI.toast('ヒントは4こまでだよ'); return; }
-    var def = { cat: cat };
-    if (cat === 'parity') def.parity = 'even';
-    else if (cat === 'multiple') def.k = 2;
-    else if (cat === 'divisor') def.k = 12;
-    else if (cat === 'cmul') { def.a = 2; def.b = 3; }
-    else if (cat === 'cdiv') { def.a = 12; def.b = 18; }
+  addRow: function (key) {
+    if (Create.rows.length >= 4) { UI.toast('手がかりは4こまでだよ'); return; }
+    var def;
+    if (key === 'gt') def = { cat: 'basic', kind: 'gt', v: 10 };
+    else if (key === 'lt') def = { cat: 'basic', kind: 'lt', v: 30 };
+    else if (key === 'ones') def = { cat: 'basic', kind: 'ones', d: 2 };
+    else if (key === 'parity') def = { cat: 'parity', parity: 'even' };
+    else if (key === 'multiple') def = { cat: 'multiple', k: 3 };
+    else if (key === 'divisor') def = { cat: 'divisor', k: 12 };
+    else if (key === 'cmul') def = { cat: 'cmul', a: 2, b: 3 };
+    else if (key === 'cdiv') def = { cat: 'cdiv', a: 12, b: 18 };
     Create.rows.push(def);
     Create.renderBuilder();
     Create.recalc();
@@ -455,26 +494,26 @@ var Create = {
     var wrap = document.getElementById('hintBuilder');
     wrap.innerHTML = '';
     Create.rows.forEach(function (def, i) {
+      var color = def.cat === 'basic' ? 'var(--c-basic)' : 'var(--c-' + def.cat + ')';
       var div = document.createElement('div');
-      div.className = 'hint-row ' + CATS[def.cat].color;
-      var inner = '<span>' + CATS[def.cat].icon + ' ' + CATS[def.cat].name + '</span>';
-      if (def.cat === 'parity') {
-        inner += ' <select data-i="' + i + '" data-f="parity">' +
-          '<option value="even"' + (def.parity === 'even' ? ' selected' : '') + '>偶数</option>' +
-          '<option value="odd"' + (def.parity === 'odd' ? ' selected' : '') + '>奇数</option></select>';
+      div.className = 'hint-row';
+      div.style.background = color;
+      var inner = '';
+      if (def.cat === 'basic') {
+        if (def.kind === 'gt') inner = '犯人は <input type="number" value="' + def.v + '" data-i="' + i + '" data-f="v"> より 大きい';
+        else if (def.kind === 'lt') inner = '犯人は <input type="number" value="' + def.v + '" data-i="' + i + '" data-f="v"> より 小さい';
+        else if (def.kind === 'ones') inner = '一の位は <input type="number" min="0" max="9" value="' + def.d + '" data-i="' + i + '" data-f="d">';
+      } else if (def.cat === 'parity') {
+        inner = '<select data-i="' + i + '" data-f="parity"><option value="even"' + (def.parity === 'even' ? ' selected' : '') + '>偶数</option><option value="odd"' + (def.parity === 'odd' ? ' selected' : '') + '>奇数</option></select>';
       } else if (def.cat === 'multiple' || def.cat === 'divisor') {
-        var label = def.cat === 'multiple' ? 'の倍数' : 'の約数';
-        inner += ' <input type="number" min="1" value="' + def.k + '" data-i="' + i + '" data-f="k"> ' + label;
+        inner = '<input type="number" min="1" value="' + def.k + '" data-i="' + i + '" data-f="k"> の' + (def.cat === 'multiple' ? '倍数' : '約数');
       } else {
-        inner += ' <input type="number" min="1" value="' + def.a + '" data-i="' + i + '" data-f="a"> と ' +
-                 '<input type="number" min="1" value="' + def.b + '" data-i="' + i + '" data-f="b"> の' +
-                 (def.cat === 'cmul' ? '公倍数' : '公約数');
+        inner = '<input type="number" min="1" value="' + def.a + '" data-i="' + i + '" data-f="a"> と <input type="number" min="1" value="' + def.b + '" data-i="' + i + '" data-f="b"> の' + (def.cat === 'cmul' ? '公倍数' : '公約数');
       }
-      inner += '<button class="rm" data-i="' + i + '">けす</button>';
-      div.innerHTML = inner;
+      div.innerHTML = '<span>' + (CATS[def.cat] ? CATS[def.cat].icon : '📎') + '</span> <span>' + inner + '</span>' +
+        '<button class="rm" data-i="' + i + '">けす</button>';
       wrap.appendChild(div);
     });
-    // イベント紐付け
     wrap.querySelectorAll('input, select').forEach(function (el) {
       el.addEventListener('input', function () {
         var i = Number(el.dataset.i), f = el.dataset.f;
@@ -491,10 +530,11 @@ var Create = {
   },
   toHints: function () {
     return Create.rows.map(function (def) {
-      var d = { category: def.cat };
-      if (def.cat === 'parity') d.parity = def.parity;
-      else if (def.cat === 'multiple' || def.cat === 'divisor') d.k = def.k;
-      else { d.a = def.a; d.b = def.b; }
+      var d;
+      if (def.cat === 'basic') d = { category: 'basic', kind: def.kind, v: def.v, d: def.d, k: def.k };
+      else if (def.cat === 'parity') d = { category: 'parity', parity: def.parity };
+      else if (def.cat === 'multiple' || def.cat === 'divisor') d = { category: def.cat, k: def.k };
+      else d = { category: def.cat, a: def.a, b: def.b };
       return Engine.makeHint(d);
     });
   },
@@ -504,32 +544,31 @@ var Create = {
     document.getElementById('createCandidates').textContent = cand.length;
     var secret = Number(document.getElementById('createSecret').value);
     var note = document.getElementById('createNote');
-    if (!hints.length) { note.textContent = 'ヒントを2こ以上えらぼう。'; return; }
-    if (cand.indexOf(secret) < 0) { note.textContent = '⚠️ ひみつの数「' + secret + '」がヒントにあてはまらないよ。'; }
-    else if (cand.length === 1) { note.textContent = '✅ ばっちり！ 答えは1つにしぼれているよ。'; }
-    else { note.textContent = 'あと ' + (cand.length - 1) + ' こ候補があるよ。ヒントを足して1つにしぼろう。'; }
+    if (!hints.length) { note.textContent = '手がかりを2こ以上えらぼう。'; return; }
+    if (cand.indexOf(secret) < 0) note.textContent = '⚠️ ひみつの数「' + secret + '」が手がかりに合わないよ。';
+    else if (cand.length === 1) note.textContent = '✅ ばっちり！ 犯人は1人にしぼれているよ。';
+    else note.textContent = 'あと ' + (cand.length - 1) + ' 人 容ぎ者がいる。手がかりを足して1人にしぼろう。';
   },
   save: function () {
     var secret = Number(document.getElementById('createSecret').value);
     var hints = Create.toHints();
     var cand = Engine.candidates(hints, APP.range);
-    if (hints.length < 2) { UI.toast('ヒントは2こ以上つけてね'); return; }
-    if (cand.indexOf(secret) < 0) { UI.toast('ひみつの数がヒントに合っていないよ'); return; }
+    if (hints.length < 2) { UI.toast('手がかりは2こ以上つけてね'); return; }
+    if (cand.indexOf(secret) < 0) { UI.toast('ひみつの数が手がかりに合っていないよ'); return; }
     var problem = {
       secret: secret, range: APP.range,
       hints: hints.map(function (h) { return h.desc; }),
-      author: document.getElementById('createAuthor').value || 'ななし探偵',
+      author: document.getElementById('createAuthor').value || APP.name || 'ななし探偵',
       candidates: cand.length
     };
     Server.call('saveProblem', [problem]).then(function () {
-      UI.overlay('📨', 'とうろく完了！', 'みんなの問題にくわわったよ。ほかの探偵に挑戦してもらおう！');
+      UI.overlay('📨', '挑戦状 完成！', 'みんなの未解決事件にくわわったよ。\nなかまに挑戦してもらおう！', '受理');
       Create.loadGallery();
     }).catch(function () {
-      // GAS が無い環境ではローカル保存
       var list = JSON.parse(localStorage.getItem('problems') || '[]');
-      problem.id = 'local' + Date.now(); problem.createdAt = new Date().toISOString();
+      problem.id = 'local' + Date.now();
       list.push(problem); localStorage.setItem('problems', JSON.stringify(list));
-      UI.overlay('📨', 'とうろく完了！（このタブに保存）', 'みんなの問題にくわわったよ。');
+      UI.overlay('📨', '挑戦状 完成！（この端末に保存）', 'みんなの未解決事件にくわわったよ。', '受理');
       Create.loadGallery();
     });
   },
@@ -537,55 +576,40 @@ var Create = {
     var box = document.getElementById('galleryList');
     box.innerHTML = '<p class="muted">よみこみ中…</p>';
     Server.call('listProblems', [30]).then(Create.renderGallery).catch(function () {
-      var list = JSON.parse(localStorage.getItem('problems') || '[]').slice().reverse();
-      Create.renderGallery(list);
+      Create.renderGallery(JSON.parse(localStorage.getItem('problems') || '[]').slice().reverse());
     });
   },
   renderGallery: function (list) {
     var box = document.getElementById('galleryList');
-    if (!list || !list.length) { box.innerHTML = '<p class="muted">まだ問題がないよ。さいしょの1問をつくろう！</p>'; return; }
+    if (!list || !list.length) { box.innerHTML = '<p class="muted">まだ事件がないよ。さいしょの挑戦状をつくろう！</p>'; return; }
     box.innerHTML = '';
     list.forEach(function (p) {
       var item = document.createElement('div');
       item.className = 'gallery-item';
-      item.innerHTML = '<div><div class="gi-author">🕵️ ' + (p.author || 'ななし探偵') + '</div>' +
-        '<div class="gi-meta">ヒント' + (p.hints ? p.hints.length : 0) + 'こ ／ はんい1〜' + p.range + '</div></div>';
+      item.innerHTML = '<div><div class="gi-author">🖋 ' + (p.author || 'ななし探偵') + '</div>' +
+        '<div class="gi-meta">手がかり' + (p.hints ? p.hints.length : 0) + 'こ ／ 現場1〜' + p.range + '</div></div>';
       var btn = document.createElement('button');
-      btn.textContent = 'ちょうせん';
+      btn.textContent = '挑戦';
       btn.onclick = function () { Create.play(p); };
       item.appendChild(btn);
       box.appendChild(item);
     });
   },
-  /** ギャラリーの問題をゲーム画面で解く */
   play: function (p) {
     var hints = (p.hints || []).map(function (d) { return Engine.makeHint(d); });
-    APP.range = p.range; // 問題のはんいに合わせる
+    APP.range = p.range;
     Nav.go('game');
-    Game.puzzle = { secret: p.secret, range: p.range, hints: hints };
-    Game.revealed = []; Game.solved = false; Game.guessMode = false;
-    document.getElementById('rangeLabel').textContent = '1–' + p.range;
-    document.getElementById('usedHints').textContent = '0';
-    UI.buildGrid(document.getElementById('numberGrid'), p.range);
-    Game.updateCandidates();
-    document.getElementById('candidateCount').textContent = p.range;
-    document.getElementById('clueList').innerHTML =
-      '<p class="muted" style="margin:4px 2px">🕵️ ' + (p.author || 'ななし探偵') + ' からの挑戦状！</p>';
-    var btn = document.getElementById('revealBtn'); btn.disabled = false; btn.textContent = 'つぎの手がかりを見る';
+    Game.setup({ secret: p.secret, range: p.range, hints: hints }, p.range,
+      '🖋 ' + (p.author || 'ななし探偵') + ' からの挑戦状！ ひみつの数を見やぶれ。');
   }
 };
 
 /* ============================================================
- *  Group: グループ対抗
+ *  Group: グループ対決
  * ============================================================ */
 var Group = {
-  startTime: 0,
-  hostPuzzle: null,
-  hostRevealed: 0,
-
-  init: function () {
-    Group.tab('solve');
-  },
+  startTime: 0, hostPuzzle: null, hostRevealed: 0,
+  init: function () { Group.tab('solve'); },
   tab: function (which) {
     ['Solve', 'Host', 'Board'].forEach(function (t) {
       document.getElementById('group' + t).classList.toggle('hidden', t.toLowerCase() !== which);
@@ -593,20 +617,22 @@ var Group = {
     document.getElementById('gtSolve').classList.toggle('active', which === 'solve');
     document.getElementById('gtHost').classList.toggle('active', which === 'host');
     document.getElementById('gtBoard').classList.toggle('active', which === 'board');
-
     if (which === 'solve') {
       Group.startTime = Date.now();
       UI.buildGrid(document.getElementById('groupGrid'), APP.range, {
-        onTap: function (n, el) { el.classList.toggle('dead'); }
+        suspect: true, onTap: function (n, el) { el.classList.toggle('dead'); Group.checkCorrect(n, el); }
       });
-    } else if (which === 'board') {
-      Group.loadBoard();
+    } else if (which === 'board') Group.loadBoard();
+  },
+  checkCorrect: function (n, el) {
+    // 出題中の秘密の数と一致したら得点記録
+    if (Group.hostPuzzle && n === Group.hostPuzzle.secret && !el.classList.contains('dead')) {
+      Group.submitCorrect();
     }
   },
   submitCorrect: function () {
     var name = document.getElementById('groupName').value || 'グループ';
     var timeSec = Math.round((Date.now() - Group.startTime) / 1000);
-    // 使ったヒント数は出題側の提示数。回答班端末では簡易に host の revealed を使う（同一端末想定）
     var hintsUsed = Group.hostRevealed || 0;
     var score = Group.computeScore(timeSec, hintsUsed);
     Server.call('saveScore', [{ session: APP.groupSession, groupName: name, score: score, hintsUsed: hintsUsed, timeSec: timeSec }])
@@ -619,23 +645,20 @@ var Group = {
       });
   },
   afterSubmit: function (name, score, timeSec) {
-    UI.overlay('🏆', 'せいかい！', name + ' に ' + score + ' 点！（' + timeSec + '秒）\nスコアボードで確認しよう。');
+    UI.overlay('🏆', '解決！', name + ' に ' + score + ' 点！（' + timeSec + '秒）\nスコアボードで確認しよう。', '得点');
   },
-  /** スコア計算式（仮・あとで調整しやすいよう1か所に） */
+  /** スコア計算式（仮・調整しやすいよう1か所に） */
   computeScore: function (timeSec, hintsUsed) {
-    var base = 100;
-    var speedBonus = Math.max(0, 60 - timeSec);   // 60秒より速いほど加点
-    var hintPenalty = hintsUsed * 8;              // ヒント1つにつき-8
+    var base = 100, speedBonus = Math.max(0, 60 - timeSec), hintPenalty = hintsUsed * 8;
     return Math.max(10, base + speedBonus - hintPenalty);
   },
   hostAuto: function () {
     var secret = Number(document.getElementById('hostSecret').value) || 24;
-    var pool = Engine.buildPool(secret, APP.cats, APP.range);
-    var res = Engine.greedy(pool, APP.range, 4);
+    var res = Engine.greedy(Engine.buildPool(secret, APP.cats, APP.range), APP.range, 5);
     Group.hostPuzzle = { secret: secret, hints: res.hints };
     Group.hostRevealed = 0;
     document.getElementById('hostClues').innerHTML =
-      '<p class="muted">ひみつの数は ' + secret + '。「つぎの手がかりを出す」でスクリーンに1つずつ出そう。</p>';
+      '<p class="muted">ひみつの数は ' + secret + '。「次の手がかりを出す」でスクリーンに1つずつ出そう。</p>';
     UI.toast('出題を用意したよ');
   },
   hostReveal: function () {
@@ -645,9 +668,9 @@ var Group = {
     if (idx === 0) document.getElementById('hostClues').innerHTML = '';
     var hint = Group.hostPuzzle.hints[idx];
     var div = document.createElement('div');
-    div.className = 'host-clue ' + CATS[hint.cat].color;
-    div.style.background = getComputedStyle(document.documentElement).getPropertyValue('--c-' + hint.cat);
-    div.textContent = CATS[hint.cat].icon + ' ' + hint.text;
+    div.className = 'host-clue';
+    div.style.background = hint.cat === 'basic' ? 'var(--c-basic)' : 'var(--c-' + hint.cat + ')';
+    div.textContent = hint.tag + '：' + hint.text;
     document.getElementById('hostClues').appendChild(div);
     Group.hostRevealed++;
   },
@@ -655,8 +678,7 @@ var Group = {
     var box = document.getElementById('scoreboard');
     box.innerHTML = '<p class="muted">よみこみ中…</p>';
     Server.call('listScores', [APP.groupSession]).then(Group.renderBoard).catch(function () {
-      var raw = JSON.parse(localStorage.getItem('scores') || '[]');
-      var byGroup = {};
+      var raw = JSON.parse(localStorage.getItem('scores') || '[]'), byGroup = {};
       raw.forEach(function (r) {
         var g = r.group_name; if (!byGroup[g]) byGroup[g] = { groupName: g, score: 0, hintsUsed: 0, plays: 0 };
         byGroup[g].score += r.score; byGroup[g].hintsUsed += r.hints_used; byGroup[g].plays++;
@@ -668,7 +690,7 @@ var Group = {
   },
   renderBoard: function (board) {
     var box = document.getElementById('scoreboard');
-    if (!board || !board.length) { box.innerHTML = '<p class="muted">まだスコアがないよ。回答してみよう！</p>'; return; }
+    if (!board || !board.length) { box.innerHTML = '<p class="muted">まだスコアがないよ。捜査してみよう！</p>'; return; }
     var medals = ['🥇', '🥈', '🥉'];
     box.innerHTML = '';
     board.forEach(function (r, i) {
@@ -683,60 +705,66 @@ var Group = {
 };
 
 /* ============================================================
- *  Dex: てがかり図鑑・ランク
+ *  Dex: 手がかり図鑑・解禁マップ・ランク
  * ============================================================ */
 var Dex = {
   render: function () {
-    // ランクパネル
     var rank = Progress.rankFor(APP.badges);
-    var next = RANKS.find(function (r) { return r.min > APP.badges; });
-    var panel = document.getElementById('rankPanel');
+    var next = null;
+    for (var i = 0; i < RANKS.length; i++) { if (RANKS[i].min > APP.badges) { next = RANKS[i]; break; } }
     var progress = next ? Math.round((APP.badges - rank.min) / (next.min - rank.min) * 100) : 100;
-    panel.innerHTML =
+    document.getElementById('rankPanel').innerHTML =
       '<div class="rank-big">' + rank.icon + '</div>' +
       '<div class="rank-title">' + rank.name + '</div>' +
-      '<div class="muted">獲得バッジ ' + APP.badges + ' こ' + (next ? '　（つぎのランクまで あと ' + (next.min - APP.badges) + '）' : '　最高ランク！') + '</div>' +
-      '<div class="rank-bar"><span style="width:' + progress + '%"></span></div>';
+      '<div class="rank-stats"><div>解決した事件<b>' + APP.solved + '</b></div>' +
+      '<div>バッジ<b>' + APP.badges + '</b></div>' +
+      '<div>最少手がかり<b>' + (APP.bestClues || '–') + '</b></div></div>' +
+      '<div class="rank-bar"><span style="width:' + progress + '%"></span></div>' +
+      '<div class="muted">' + (next ? 'つぎのランク「' + next.name + '」まで あと ' + (next.min - APP.badges) + '事件' : '最高ランク！さすが名探偵！') + '</div>';
 
-    // カテゴリ図鑑
-    var grid = document.getElementById('dexGrid');
-    grid.innerHTML = '';
-    Object.keys(CATS).forEach(function (cat) {
-      var meta = CATS[cat];
-      var unlocked = APP.cats.indexOf(cat) >= 0;
-      var card = document.createElement('div');
-      card.className = 'dex-card' + (unlocked ? '' : ' locked');
-      card.style.borderLeftColor = getComputedStyle(document.documentElement).getPropertyValue('--c-' + cat);
-      card.innerHTML = '<div class="dx-icon">' + meta.icon + '</div>' +
-        '<div class="dx-name">' + meta.name + '</div>' +
-        '<div class="dx-desc">' + meta.desc + '</div>' +
-        (unlocked ? '' : '<div class="dx-lock">🔒</div>');
-      grid.appendChild(card);
+    // 解禁マップ（フェーズ＝手がかりの解禁ステップ）
+    var steps = [
+      { cat: 'basic', icon: '📎', name: '基本の手がかり', desc: '大小・一の位・けた（いつでも使える）', phase: 0 },
+      { cat: 'parity', icon: CATS.parity.icon, name: '偶数・奇数', desc: '2でわりきれるかどうか', phase: 1 },
+      { cat: 'multiple', icon: CATS.multiple.icon, name: '倍数', desc: '◯の倍数かどうか', phase: 2 },
+      { cat: 'divisor', icon: CATS.divisor.icon, name: '約数', desc: '◯の約数かどうか', phase: 3 },
+      { cat: 'cmul', icon: CATS.cmul.icon, name: '公倍数', desc: '2つの数 両方の倍数', phase: 4 },
+      { cat: 'cdiv', icon: CATS.cdiv.icon, name: '公約数', desc: '2つの数 両方の約数', phase: 5 }
+    ];
+    var map = document.getElementById('dexMap');
+    map.innerHTML = '';
+    steps.forEach(function (s) {
+      var unlocked = s.phase === 0 || APP.cats.indexOf(s.cat) >= 0;
+      var isNow = s.phase === APP.phase;
+      var node = document.createElement('div');
+      node.className = 'dex-node' + (unlocked ? '' : ' locked') + (isNow ? ' current' : '');
+      node.style.borderLeftColor = 'var(--c-' + s.cat + ')';
+      var badge = s.phase === 0
+        ? '<span class="dn-badge on">いつでも</span>'
+        : (isNow ? '<span class="dn-badge now">いま解禁</span>'
+                 : (unlocked ? '<span class="dn-badge on">解禁ずみ</span>'
+                             : '<span class="dn-badge off">🔒フェーズ' + s.phase + '</span>'));
+      node.innerHTML = '<div class="dn-phase">' + (s.phase === 0 ? '基' : s.phase) + '</div>' +
+        '<div class="dn-body"><div class="dn-name"><span class="dn-icon">' + s.icon + '</span>' + s.name + '</div>' +
+        '<div class="dn-desc">' + s.desc + '</div></div>' + badge;
+      map.appendChild(node);
     });
 
-    // 認定試験
-    var cta = document.getElementById('examCta');
     var examReady = APP.phase >= 6;
-    cta.innerHTML = '<button class="exam-btn" ' + (examReady ? '' : 'disabled') + ' onclick="Dex.exam()">' +
+    document.getElementById('examCta').innerHTML =
+      '<button class="exam-btn" ' + (examReady ? '' : 'disabled') + ' onclick="Dex.exam()">' +
       (examReady ? '👑 名探偵 認定試験にちょうせん！' : '🔒 名探偵 認定試験（フェーズ6で解禁）') + '</button>';
   },
   exam: function () {
-    // 全カテゴリ混合の総合問題（範囲100・ヒント多め）
     APP.range = 100;
     Nav.go('game');
-    Game.puzzle = Engine.generatePuzzle(PHASES[5].cats, 100);
-    Game.revealed = []; Game.solved = false; Game.guessMode = false;
-    document.getElementById('rangeLabel').textContent = '1–100';
-    document.getElementById('usedHints').textContent = '0';
-    UI.buildGrid(document.getElementById('numberGrid'), 100);
-    document.getElementById('candidateCount').textContent = 100;
-    document.getElementById('clueList').innerHTML = '<p class="muted" style="margin:4px 2px">👑 認定試験：すべての手がかりを使って見やぶれ！</p>';
-    var btn = document.getElementById('revealBtn'); btn.disabled = false; btn.textContent = 'つぎの手がかりを見る';
+    Game.setup(Engine.generatePuzzle(PHASES[5].cats, 100), 100,
+      '👑 認定試験：すべての手がかりを使って、ひみつの数を見やぶれ！');
   }
 };
 
 /* ============================================================
- *  Progress: バッジ・ランク
+ *  Progress: バッジ・ランク・クラウド保存
  * ============================================================ */
 var Progress = {
   rankFor: function (badges) {
@@ -744,27 +772,28 @@ var Progress = {
     RANKS.forEach(function (x) { if (badges >= x.min) r = x; });
     return r;
   },
-  award: function () {
+  award: function (cluesUsed) {
     var before = Progress.rankFor(APP.badges);
-    APP.badges++;
-    localStorage.setItem('badges', APP.badges);
+    APP.badges++; APP.solved++;
+    if (!APP.bestClues || cluesUsed < APP.bestClues) APP.bestClues = cluesUsed;
     var after = Progress.rankFor(APP.badges);
     UI.refreshRankChip();
+    Progress.save();
     if (after.name !== before.name) {
       setTimeout(function () {
-        UI.overlay('⬆️', 'ランクアップ！', '「' + after.name + '」に昇格したよ！ ' + after.icon);
-      }, 1600);
+        UI.overlay('⬆️', 'ランクアップ！', '「' + after.name + '」に昇格！ ' + after.icon + '\nつぎの事件も待っているぞ。', '昇格');
+      }, 1700);
     }
-    // サーバへ進捗保存（ベストエフォート）
-    Server.call('saveProgress', [{ student: APP.student, unlocked: APP.cats, badges: APP.badges, rank: after.name }]).catch(function () {});
+  },
+  /** クラウド（スプレッドシート）＋端末キャッシュに保存 */
+  save: function () {
+    var rank = Progress.rankFor(APP.badges).name;
+    localStorage.setItem('progress', JSON.stringify({ badges: APP.badges, solved: APP.solved, bestClues: APP.bestClues, name: APP.name }));
+    Server.call('saveProgress', [{
+      userId: APP.userId, name: APP.name, badges: APP.badges, rank: rank,
+      solved: APP.solved, bestClues: APP.bestClues, unlocked: APP.cats
+    }]).catch(function () {});
   }
-};
-
-UI.refreshRankChip = function () {
-  var rank = Progress.rankFor(APP.badges);
-  document.getElementById('rankIcon').textContent = rank.icon;
-  document.getElementById('rankName').textContent = rank.name;
-  document.getElementById('badgeCount').textContent = APP.badges;
 };
 
 /* ============================================================
@@ -779,31 +808,31 @@ var Settings = {
       opt.className = 'phase-opt' + (ph.n === APP.phase ? ' active' : '');
       var catNames = ph.cats.map(function (c) { return CATS[c].name; }).join('・');
       opt.innerHTML = '<div class="po-num">' + ph.n + '</div>' +
-        '<div><div>' + ph.name + '</div><div class="po-sub">はんい1〜' + ph.range + ' ／ ' + catNames + '</div></div>';
+        '<div><div>' + ph.name + '</div><div class="po-sub">現場1〜' + ph.range + ' ／ ' + catNames + '</div></div>';
       opt.onclick = function () { Settings.setPhase(ph.n); };
       list.appendChild(opt);
     });
     document.getElementById('sessionName').value = APP.groupSession || '';
+    var who = APP.usingEmail
+      ? '記録の保存先：<b>' + APP.userId + '</b>（Googleアカウント／クラウド保存。端末を変えても記録が続きます）'
+      : '記録の保存先：この端末（名前：' + APP.name + '）。GAS公開＋Googleログインでクラウド保存に切りかわります。';
+    document.getElementById('whoami').innerHTML = '🗄 ' + who;
   },
   setPhase: function (n) {
     var prevRange = APP.range;
     Settings.applyPhase(n);
-    Settings.render();
-    Home.render();
+    Settings.render(); Home.render();
     Server.call('setConfig', ['phase', n]).catch(function () {});
     localStorage.setItem('phase', n);
-    // 50→100 に変わる瞬間の LEVEL UP 演出
     if (prevRange === 50 && APP.range === 100) {
-      UI.overlay('✨', 'LEVEL UP！', '数のはんいが 1〜100 に広がったよ！ 公倍数・公約数の手がかりも登場！');
+      UI.overlay('✨', 'LEVEL UP！', '現場が 1〜100 に広がった！\n公倍数・公約数の手がかりも解禁だ。', 'LEVEL UP');
     } else {
       UI.toast('フェーズ' + n + '「' + PHASES[n - 1].name + '」に切りかえたよ');
     }
   },
   applyPhase: function (n) {
     var ph = PHASES[n - 1];
-    APP.phase = n;
-    APP.cats = ph.cats.slice();
-    APP.range = ph.range;
+    APP.phase = n; APP.cats = ph.cats.slice(); APP.range = ph.range;
   },
   saveSession: function () {
     APP.groupSession = document.getElementById('sessionName').value || '';
@@ -814,26 +843,62 @@ var Settings = {
 };
 
 /* ============================================================
+ *  HowTo: あそびかた
+ * ============================================================ */
+var HowTo = {
+  steps: [
+    '事件ファイルには「<b>ひみつの数</b>」が1つだけ かくれている。現場（数表）から見つけ出そう。',
+    '「<b>次の手がかりを調べる</b>」を押すと証拠が1つ出る。手がかりに<b>合わない数は現場から消える</b>（✕）。',
+    '手がかりは種類ごとに<b>色分け</b>。単元が進むと<b>新しい手がかりが解禁</b>されていくよ（📔図鑑で確認）。',
+    '犯人がわかったら、<b>現場の数字をタップして告発</b>！ 少ない手がかりで当てるほど「⚡するどい推理」だ。'
+  ],
+  open: function () {
+    var ol = document.getElementById('howtoSteps');
+    ol.innerHTML = '';
+    HowTo.steps.forEach(function (s) { var li = document.createElement('li'); li.innerHTML = s; ol.appendChild(li); });
+    document.getElementById('howto').classList.remove('hidden');
+  },
+  close: function () {
+    document.getElementById('howto').classList.add('hidden');
+    localStorage.setItem('seenHowto', '1');
+  }
+};
+
+/* ============================================================
  *  起動
  * ============================================================ */
 (function boot() {
-  // ローカルに保存された状態を復元
-  APP.badges = Number(localStorage.getItem('badges') || 0);
+  // 端末キャッシュから復元（オフライン時のフォールバック）
+  try {
+    var cached = JSON.parse(localStorage.getItem('progress') || '{}');
+    APP.badges = cached.badges || 0; APP.solved = cached.solved || 0;
+    APP.bestClues = cached.bestClues || 0; if (cached.name) APP.name = cached.name;
+  } catch (e) {}
   APP.groupSession = localStorage.getItem('groupSession') || '';
   var localPhase = Number(localStorage.getItem('phase') || 0);
 
   UI.refreshRankChip();
 
-  // サーバ設定を取得（あれば優先）
-  Server.call('getConfig', []).then(function (cfg) {
-    Settings.applyPhase(cfg.phase || localPhase || 1);
-    if (cfg.groupSession) APP.groupSession = cfg.groupSession;
+  // ① ユーザー識別 → ② クラウドの進捗を読み込み → ③ 設定フェーズ
+  Server.call('getMe', []).then(function (me) {
+    if (me && me.email) { APP.userId = me.email; APP.name = me.name || me.email; APP.usingEmail = true; }
+    return Server.call('getProgress', [APP.userId]);
+  }).then(function (p) {
+    if (p) { APP.badges = p.badges || 0; APP.solved = p.solved || 0; APP.bestClues = p.bestClues || 0; if (p.name) APP.name = p.name; }
+    UI.refreshRankChip();
+    return Server.call('getConfig', []);
+  }).then(function (cfg) {
+    Settings.applyPhase((cfg && cfg.phase) || localPhase || 1);
+    if (cfg && cfg.groupSession) APP.groupSession = cfg.groupSession;
     Home.render();
   }).catch(function () {
+    // GAS 非接続（ローカルプレビュー）
     Settings.applyPhase(localPhase || 1);
     Home.render();
   });
 
   Nav.go('home');
+  // 初回のみ あそびかたを表示
+  if (!localStorage.getItem('seenHowto')) setTimeout(HowTo.open, 400);
 })();
 </script>

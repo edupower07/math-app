@@ -3,6 +3,9 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=Zen+Maru+Gothic:wght@500;700;900&family=Yusei+Magic&family=Special+Elite&display=swap" rel="stylesheet">
   <?!= include('styles'); ?>
 </head>
 <body>
@@ -11,91 +14,114 @@
     <!-- ===== ヘッダー ===== -->
     <header class="topbar">
       <div class="brand" onclick="Nav.go('home')">
-        <span class="brand-badge">🔍</span>
+        <span class="brand-badge">🔎</span>
         <span class="brand-name">名探偵！かずのひみつ</span>
       </div>
-      <div class="rankchip" id="rankChip" title="たんていランク">
-        <span id="rankIcon">🕵️</span>
+      <div class="rankchip" id="rankChip" onclick="Nav.go('dex')" title="たんていランク">
+        <span id="rankIcon">🔰</span>
         <span id="rankName">見習い探偵</span>
-        <span class="badgecount">🎖 <b id="badgeCount">0</b></span>
+        <span class="badgecount">🏅<b id="badgeCount">0</b></span>
       </div>
     </header>
 
-    <!-- ===== ホーム画面 ===== -->
+    <!-- ===== ホーム画面（探偵事務所） ===== -->
     <section class="screen" id="screen-home">
-      <div class="hero">
-        <h1 class="hero-title">きみは<ruby>名探偵<rt>めいたんてい</rt></ruby>！</h1>
-        <p class="hero-sub">ヒントを手がかりに「ひみつの数」を見やぶろう。</p>
+      <div class="case-hero">
+        <div class="hero-stamp">CONFIDENTIAL</div>
+        <div class="hero-file-no">FILE&nbsp;No.<span id="heroFileNo">005</span></div>
+        <h1 class="hero-title">かずの<br>ひみつ捜査ファイル</h1>
+        <p class="hero-sub">つみ重なる手がかりから「ひみつの数」をわり出せ。</p>
+        <div class="detective-line" id="detectiveLine"></div>
       </div>
 
       <div class="phase-banner" id="phaseBanner"></div>
 
       <div class="menu-grid">
-        <button class="menu-card c-game" onclick="Nav.go('game')">
-          <span class="mc-icon">🎯</span>
-          <span class="mc-title">ゲームをはじめる</span>
-          <span class="mc-desc">ひみつの数を当てよう</span>
+        <button class="folder c-game" onclick="Nav.go('game')">
+          <span class="folder-tab">捜査</span>
+          <span class="mc-icon">🕵️</span>
+          <span class="mc-title">捜査をはじめる</span>
+          <span class="mc-desc">ひみつの数をわり出す</span>
         </button>
-        <button class="menu-card c-highlight" onclick="Nav.go('highlight')">
-          <span class="mc-icon">🔦</span>
-          <span class="mc-title">ハイライトモード</span>
+        <button class="folder c-highlight" onclick="Nav.go('highlight')">
+          <span class="folder-tab">分析</span>
+          <span class="mc-icon">🔬</span>
+          <span class="mc-title">重ねて分析</span>
           <span class="mc-desc">公倍数・公約数をさがせ</span>
         </button>
-        <button class="menu-card c-create" onclick="Nav.go('create')">
-          <span class="mc-icon">✏️</span>
-          <span class="mc-title">もんだいをつくる</span>
-          <span class="mc-desc">みんなに挑戦状！</span>
+        <button class="folder c-create" onclick="Nav.go('create')">
+          <span class="folder-tab">出題</span>
+          <span class="mc-icon">✒️</span>
+          <span class="mc-title">挑戦状をつくる</span>
+          <span class="mc-desc">なかまに事件を出す</span>
         </button>
-        <button class="menu-card c-group" onclick="Nav.go('group')">
+        <button class="folder c-group" onclick="Nav.go('group')">
+          <span class="folder-tab">対決</span>
           <span class="mc-icon">🏁</span>
-          <span class="mc-title">グループたいこう</span>
-          <span class="mc-desc">クラスで対決だ</span>
+          <span class="mc-title">グループ対決</span>
+          <span class="mc-desc">クラスで捜査バトル</span>
         </button>
-        <button class="menu-card c-dex" onclick="Nav.go('dex')">
-          <span class="mc-icon">📖</span>
-          <span class="mc-title">てがかり図鑑</span>
-          <span class="mc-desc">ランクとバッジ</span>
+        <button class="folder c-dex" onclick="Nav.go('dex')">
+          <span class="folder-tab">記録</span>
+          <span class="mc-icon">📔</span>
+          <span class="mc-title">手がかり図鑑</span>
+          <span class="mc-desc">ランクと解禁マップ</span>
         </button>
-        <button class="menu-card c-settings" onclick="Nav.go('settings')">
-          <span class="mc-icon">⚙️</span>
+        <button class="folder c-settings" onclick="Nav.go('settings')">
+          <span class="folder-tab">設定</span>
+          <span class="mc-icon">🗂️</span>
           <span class="mc-title">せんせい設定</span>
           <span class="mc-desc">単元フェーズの切替</span>
         </button>
       </div>
+
+      <button class="howto-link" onclick="HowTo.open()">❓ あそびかたを見る</button>
     </section>
 
-    <!-- ===== ゲーム画面 ===== -->
+    <!-- ===== 捜査画面（メイン：ひみつの数当て） ===== -->
     <section class="screen" id="screen-game">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">🎯 ひみつの数当て</h2>
-        <button class="ghost" onclick="Game.newGame()">🔄 つぎの問題</button>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">🕵️ 捜査ファイル</h2>
+        <button class="ghost" onclick="Game.newGame()">🔄 次の事件</button>
       </div>
 
-      <div class="game-stats">
-        <div class="stat"><span class="stat-num" id="candidateCount">–</span><span class="stat-label">のこり候補</span></div>
-        <div class="stat"><span class="stat-num" id="usedHints">0</span><span class="stat-label">使ったヒント</span></div>
-        <div class="stat"><span class="stat-num" id="rangeLabel">1–50</span><span class="stat-label">数のはんい</span></div>
-      </div>
+      <div class="case-paper">
+        <div class="case-topline">
+          <span class="case-no">FILE No.<span id="caseNo">001</span></span>
+          <span class="case-range">現場：1〜<span id="rangeLabel2">50</span></span>
+        </div>
+        <p class="case-brief" id="caseBrief">この中に「ひみつの数」がひとりだけ かくれている。手がかりを1つずつ調べて、あやしい数を消していこう。わかったら数字をタップして告発だ！</p>
 
-      <div class="number-grid" id="numberGrid"></div>
+        <div class="game-stats">
+          <div class="stat"><span class="stat-num" id="candidateCount">50</span><span class="stat-label">ようぎ者</span></div>
+          <div class="stat"><span class="stat-num" id="usedHints">0</span><span class="stat-label">調べた手がかり</span></div>
+          <div class="stat"><span class="stat-num" id="totalHints">–</span><span class="stat-label">手がかりの数</span></div>
+        </div>
+
+        <div class="grid-wrap">
+          <div class="grid-label">🔦 現場の数（あやしい数をしぼりこめ）</div>
+          <div class="number-grid" id="numberGrid"></div>
+        </div>
+      </div>
 
       <div class="clue-area">
-        <h3 class="clue-head">🃏 手がかりカード</h3>
+        <h3 class="clue-head">🧾 証拠の手がかり</h3>
         <div class="clue-list" id="clueList"></div>
-        <button class="big-btn" id="revealBtn" onclick="Game.revealNext()">つぎの手がかりを見る</button>
+        <button class="big-btn" id="revealBtn" onclick="Game.revealNext()">🔍 次の手がかりを調べる</button>
+        <p class="accuse-hint" id="accuseHint">わかったら、現場の数字をタップして告発！</p>
       </div>
     </section>
 
-    <!-- ===== ハイライトモード（公倍数・公約数） ===== -->
+    <!-- ===== 重ねて分析（公倍数・公約数） ===== -->
     <section class="screen" id="screen-highlight">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">🔦 ハイライトモード</h2>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">🔬 重ねて分析</h2>
         <span></span>
       </div>
 
-      <div class="hl-controls">
+      <div class="case-paper">
         <div class="hl-mode">
           <button class="seg active" id="segMultiple" onclick="Highlight.setMode('multiple')">倍数（公倍数）</button>
           <button class="seg" id="segDivisor" onclick="Highlight.setMode('divisor')">約数（公約数）</button>
@@ -103,122 +129,112 @@
         <div class="hl-inputs">
           <label>数A <input type="number" id="hlA" min="1" max="100" value="2"></label>
           <label>数B <input type="number" id="hlB" min="1" max="100" value="3"></label>
-          <button class="big-btn small" onclick="Highlight.render()">ぬってみる</button>
+          <button class="big-btn small" onclick="Highlight.render()">🖍 ぬって分析</button>
         </div>
         <div class="hl-legend">
-          <span class="lg lg-a">■ Aの<span id="lgKind1">倍数</span></span>
-          <span class="lg lg-b">■ Bの<span id="lgKind2">倍数</span></span>
-          <span class="lg lg-both">■ <span id="lgBoth">公倍数</span></span>
+          <span class="lg lg-a">◼ Aの<span id="lgKind1">倍数</span></span>
+          <span class="lg lg-b">◼ Bの<span id="lgKind2">倍数</span></span>
+          <span class="lg lg-both">◼ <span id="lgBoth">公倍数</span></span>
         </div>
+        <div class="number-grid" id="hlGrid"></div>
       </div>
-
-      <div class="number-grid" id="hlGrid"></div>
 
       <div class="hl-question" id="hlQuestion"></div>
     </section>
 
-    <!-- ===== 作問モード ===== -->
+    <!-- ===== 挑戦状づくり（作問モード） ===== -->
     <section class="screen" id="screen-create">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">✏️ もんだいをつくる</h2>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">✒️ 挑戦状をつくる</h2>
         <span></span>
       </div>
 
       <div class="create-wrap">
-        <div class="create-form">
+        <div class="case-paper">
           <div class="field">
             <label>① ひみつの数（1〜<span id="createMax">50</span>）</label>
             <input type="number" id="createSecret" min="1" value="12">
           </div>
-
           <div class="field">
-            <label>② てがかりを2〜4こ 組み立てよう</label>
+            <label>② 手がかりを2〜4こ 組み立てよう</label>
             <div class="hint-builder" id="hintBuilder"></div>
             <div class="add-hint-row" id="addHintRow"></div>
           </div>
-
           <div class="create-feedback" id="createFeedback">
-            のこり候補：<b id="createCandidates">–</b> こ
+            のこりのようぎ者：<b id="createCandidates">–</b> 人
           </div>
-
           <div class="field">
-            <label>③ 名まえ（探偵名）</label>
+            <label>③ 探偵名（あなたのサイン）</label>
             <input type="text" id="createAuthor" placeholder="ななし探偵" maxlength="12">
           </div>
-
-          <button class="big-btn" onclick="Create.save()">みんなの問題に とうろく！</button>
+          <button class="big-btn" onclick="Create.save()">📨 みんなの事件に登録！</button>
           <p class="hint-note" id="createNote"></p>
         </div>
 
-        <div class="gallery">
-          <h3 class="gallery-head">📚 みんなの問題</h3>
-          <button class="ghost small" onclick="Create.loadGallery()">🔄 さいしんに更新</button>
+        <div class="case-paper">
+          <h3 class="gallery-head">📚 みんなの未解決事件</h3>
+          <button class="ghost small" onclick="Create.loadGallery()">🔄 最新に更新</button>
           <div class="gallery-list" id="galleryList"></div>
         </div>
       </div>
     </section>
 
-    <!-- ===== グループ対抗 ===== -->
+    <!-- ===== グループ対決 ===== -->
     <section class="screen" id="screen-group">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">🏁 グループたいこう</h2>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">🏁 グループ対決</h2>
         <span></span>
       </div>
 
       <div class="group-tabs">
-        <button class="seg active" id="gtSolve" onclick="Group.tab('solve')">回答する</button>
-        <button class="seg" id="gtHost" onclick="Group.tab('host')">出題（せんせい）</button>
+        <button class="seg active" id="gtSolve" onclick="Group.tab('solve')">捜査する</button>
+        <button class="seg" id="gtHost" onclick="Group.tab('host')">出題（先生）</button>
         <button class="seg" id="gtBoard" onclick="Group.tab('board')">スコアボード</button>
       </div>
 
-      <!-- 回答班 -->
-      <div class="group-pane" id="groupSolve">
+      <div class="case-paper group-pane" id="groupSolve">
         <div class="field inline">
-          <label>グループ名</label>
+          <label>班（チーム）の名前</label>
           <input type="text" id="groupName" placeholder="レッド班" maxlength="12">
         </div>
-        <p class="muted">せんせいが出す手がかりを見て、下の数表で数を当てよう。当たったら「せいかい！」を押してね。</p>
+        <p class="muted">先生が出す手がかりを見て、下の現場で数をしぼりこもう。犯人がわかったら数字をタップ！</p>
         <div class="number-grid" id="groupGrid"></div>
-        <div class="group-solve-actions">
-          <button class="big-btn" onclick="Group.submitCorrect()">🎉 せいかい！</button>
-        </div>
       </div>
 
-      <!-- 出題（教員） -->
-      <div class="group-pane hidden" id="groupHost">
-        <p class="muted">ひみつの数とヒントを決めて、スクリーンに1つずつ手がかりを出そう。</p>
+      <div class="case-paper group-pane hidden" id="groupHost">
+        <p class="muted">ひみつの数を決めて、スクリーンに手がかりを1つずつ出そう。</p>
         <div class="field inline">
           <label>ひみつの数</label>
           <input type="number" id="hostSecret" min="1" max="100" value="24">
           <button class="big-btn small" onclick="Group.hostAuto()">おまかせ出題</button>
         </div>
-        <div class="host-screen" id="hostScreen">
+        <div class="host-screen">
           <div class="host-clues" id="hostClues"></div>
-          <button class="big-btn" onclick="Group.hostReveal()">つぎの手がかりを出す</button>
+          <button class="big-btn" onclick="Group.hostReveal()">🔍 次の手がかりを出す</button>
         </div>
       </div>
 
-      <!-- スコアボード -->
-      <div class="group-pane hidden" id="groupBoard">
+      <div class="case-paper group-pane hidden" id="groupBoard">
         <button class="ghost small" onclick="Group.loadBoard()">🔄 更新</button>
         <div class="scoreboard" id="scoreboard"></div>
       </div>
     </section>
 
-    <!-- ===== てがかり図鑑・ランク ===== -->
+    <!-- ===== 手がかり図鑑・ランク ===== -->
     <section class="screen" id="screen-dex">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">📖 てがかり図鑑</h2>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">📔 手がかり図鑑</h2>
         <span></span>
       </div>
 
-      <div class="rank-panel" id="rankPanel"></div>
+      <div class="case-paper rank-panel" id="rankPanel"></div>
 
-      <h3 class="section-h">手がかりカードの種類</h3>
-      <div class="dex-grid" id="dexGrid"></div>
+      <h3 class="section-h">🗺️ 手がかり解禁マップ</h3>
+      <p class="section-note">単元が進むと、新しい手がかりが解禁されていくよ。</p>
+      <div class="dex-map" id="dexMap"></div>
 
       <div class="exam-cta" id="examCta"></div>
     </section>
@@ -226,27 +242,39 @@
     <!-- ===== せんせい設定 ===== -->
     <section class="screen" id="screen-settings">
       <div class="page-head">
-        <button class="back" onclick="Nav.go('home')">← もどる</button>
-        <h2 class="page-title">⚙️ せんせい設定</h2>
+        <button class="back" onclick="Nav.go('home')">← 事務所へ</button>
+        <h2 class="page-title">🗂️ せんせい設定</h2>
         <span></span>
       </div>
-      <div class="settings-body">
-        <p class="muted">単元の進みに合わせてフェーズを切り替えると、使えるヒントと数のはんいが変わります。</p>
+      <div class="case-paper settings-body">
+        <p class="muted">単元の進みに合わせてフェーズを切り替えると、使える手がかりと現場のはんいが変わります。</p>
         <div class="phase-list" id="phaseList"></div>
         <div class="field inline" style="margin-top:18px">
-          <label>グループ対抗セッション名</label>
-          <input type="text" id="sessionName" placeholder="7月23日1組">
+          <label>グループ対決のセッション名</label>
+          <input type="text" id="sessionName" placeholder="7月24日1組">
           <button class="big-btn small" onclick="Settings.saveSession()">保存</button>
         </div>
+        <div class="whoami" id="whoami"></div>
       </div>
     </section>
 
+  </div>
+
+  <!-- ===== あそびかたモーダル ===== -->
+  <div id="howto" class="overlay hidden" onclick="HowTo.close()">
+    <div class="howto-card" onclick="event.stopPropagation()">
+      <div class="howto-stamp">あそびかた</div>
+      <h2 class="howto-title">🕵️ 捜査の進めかた</h2>
+      <ol class="howto-steps" id="howtoSteps"></ol>
+      <button class="big-btn" onclick="HowTo.close()">捜査をはじめる！</button>
+    </div>
   </div>
 
   <!-- 演出用のトースト／オーバーレイ -->
   <div id="toast" class="toast"></div>
   <div id="overlay" class="overlay hidden" onclick="UI.closeOverlay()">
     <div class="overlay-card" onclick="event.stopPropagation()">
+      <div class="solved-stamp" id="ovStamp">解決</div>
       <div class="ov-icon" id="ovIcon">🎉</div>
       <div class="ov-title" id="ovTitle"></div>
       <div class="ov-text" id="ovText"></div>
