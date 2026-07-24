@@ -26,7 +26,7 @@ var SHEETS = {
 var HEADERS = {
   problems: ['id', 'secret', 'range', 'hints_json', 'author', 'candidates', 'created_at'],
   group_scores: ['id', 'session', 'group_name', 'score', 'hints_used', 'time_sec', 'created_at'],
-  progress: ['student', 'unlocked_json', 'badges', 'rank', 'updated_at'],
+  progress: ['user_id', 'name', 'badges', 'rank', 'solved', 'best_clues', 'unlocked_json', 'updated_at'],
   config: ['key', 'value']
 };
 
@@ -226,22 +226,47 @@ function listScores(session) {
 }
 
 /* ============================================================
- *  progress（児童ごとの進捗）
+ *  ユーザー識別（Google アカウント）
  * ============================================================ */
 
-/** 進捗を保存（student をキーに upsert） */
+/**
+ * アクセス中のユーザーを識別する。
+ * Google Workspace 内（DOMAIN 公開）なら getActiveUser().getEmail() でメールが取れる。
+ * 取れない場合は空文字を返し、クライアント側で「名前」による識別に切り替える。
+ */
+function getMe() {
+  var email = '';
+  try { email = Session.getActiveUser().getEmail() || ''; } catch (e) { email = ''; }
+  // メールのローカル部を初期表示名に（例: taro.yamada@… → taro.yamada）
+  var name = email ? email.split('@')[0] : '';
+  return { email: email, name: name };
+}
+
+/* ============================================================
+ *  progress（児童ごとの進捗）  ―  user_id（メール or 名前）をキーに永続保存
+ * ============================================================ */
+
+/**
+ * 進捗を保存（user_id をキーに upsert）。
+ * p = { userId, name, badges, rank, solved, bestClues, unlocked }
+ * スプレッドシートに書き込むので、端末を変えても記録は残り続ける。
+ */
 function saveProgress(p) {
+  var uid = p.userId || (getMe().email) || p.name || 'ゲスト探偵';
   var sheet = getSheet_(SHEETS.PROGRESS);
   var values = sheet.getDataRange().getValues();
   var row = [
-    p.student || 'ゲスト探偵',
-    JSON.stringify(p.unlocked || []),
+    uid,
+    p.name || uid,
     p.badges || 0,
     p.rank || '見習い探偵',
+    p.solved || 0,
+    p.bestClues || 0,
+    JSON.stringify(p.unlocked || []),
     new Date()
   ];
   for (var i = 1; i < values.length; i++) {
-    if (values[i][0] === row[0]) {
+    if (String(values[i][0]) === String(uid)) {
       sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
       return true;
     }
@@ -250,20 +275,23 @@ function saveProgress(p) {
   return true;
 }
 
-/** 進捗を取得 */
-function getProgress(student) {
+/** 進捗を取得（user_id 未指定なら現在のログインユーザーのメールで探す） */
+function getProgress(userId) {
+  var uid = userId || getMe().email;
+  if (!uid) return null;
   var rows = readRows_(SHEETS.PROGRESS);
   var found = null;
-  rows.forEach(function (r) {
-    if (r.student === student) found = r;
-  });
+  rows.forEach(function (r) { if (String(r.user_id) === String(uid)) found = r; });
   if (!found) return null;
   var unlocked = [];
   try { unlocked = JSON.parse(found.unlocked_json || '[]'); } catch (e) {}
   return {
-    student: found.student,
-    unlocked: unlocked,
+    userId: found.user_id,
+    name: found.name,
     badges: Number(found.badges) || 0,
-    rank: found.rank
+    rank: found.rank,
+    solved: Number(found.solved) || 0,
+    bestClues: Number(found.best_clues) || 0,
+    unlocked: unlocked
   };
 }
