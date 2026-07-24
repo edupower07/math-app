@@ -67,6 +67,12 @@
           <span class="mc-title">手がかり図鑑</span>
           <span class="mc-desc">ランクと解禁マップ</span>
         </button>
+        <button class="folder c-glossary" onclick="Glossary.open()">
+          <span class="folder-tab">辞典</span>
+          <span class="mc-icon">📖</span>
+          <span class="mc-title">用語じてん</span>
+          <span class="mc-desc">約数って何だっけ？</span>
+        </button>
         <button class="folder c-settings" onclick="Nav.go('settings')">
           <span class="folder-tab">設定</span>
           <span class="mc-icon">🗂️</span>
@@ -91,16 +97,21 @@
           <span class="case-no">FILE No.<span id="caseNo">001</span></span>
           <span class="case-range">現場：1〜<span id="rangeLabel2">50</span></span>
         </div>
-        <p class="case-brief" id="caseBrief">この中に「ひみつの数」がひとりだけ かくれている。手がかりを1つずつ調べて、あやしい数を消していこう。わかったら数字をタップして告発だ！</p>
+        <p class="case-brief" id="caseBrief">この中に「ひみつの数」が ひとりだけ かくれている。手がかりを調べて、合う数を自分でタップしてしぼりこめ！</p>
+
+        <div class="game-toolbar">
+          <button class="tool-btn" id="levelToggle" onclick="Game.toggleLevel()">🎓 じぶんレベルで挑戦</button>
+          <button class="tool-btn" onclick="Glossary.open()">📖 用語じてん</button>
+        </div>
 
         <div class="game-stats">
-          <div class="stat"><span class="stat-num" id="candidateCount">50</span><span class="stat-label">ようぎ者</span></div>
+          <div class="stat"><span class="stat-num" id="candidateCount">50</span><span class="stat-label">犯人候補</span></div>
           <div class="stat"><span class="stat-num" id="usedHints">0</span><span class="stat-label">調べた手がかり</span></div>
           <div class="stat"><span class="stat-num" id="totalHints">–</span><span class="stat-label">手がかりの数</span></div>
         </div>
 
         <div class="grid-wrap">
-          <div class="grid-label">🔦 現場の数（あやしい数をしぼりこめ）</div>
+          <div class="grid-label">🔦 現場の数（合う数をタップしてしぼりこめ）</div>
           <div class="number-grid" id="numberGrid"></div>
         </div>
       </div>
@@ -108,8 +119,8 @@
       <div class="clue-area">
         <h3 class="clue-head">🧾 証拠の手がかり</h3>
         <div class="clue-list" id="clueList"></div>
-        <button class="big-btn" id="revealBtn" onclick="Game.revealNext()">🔍 次の手がかりを調べる</button>
-        <p class="accuse-hint" id="accuseHint">わかったら、現場の数字をタップして告発！</p>
+        <button class="big-btn" id="revealBtn" onclick="Game.revealNext()">🔍 さいしょの手がかりを調べる</button>
+        <p class="accuse-hint" id="accuseHint">まずは手がかりを1つ調べよう。</p>
       </div>
     </section>
 
@@ -246,15 +257,53 @@
         <h2 class="page-title">🗂️ せんせい設定</h2>
         <span></span>
       </div>
-      <div class="case-paper settings-body">
-        <p class="muted">単元の進みに合わせてフェーズを切り替えると、使える手がかりと現場のはんいが変わります。</p>
-        <div class="phase-list" id="phaseList"></div>
-        <div class="field inline" style="margin-top:18px">
-          <label>グループ対決のセッション名</label>
-          <input type="text" id="sessionName" placeholder="7月24日1組">
-          <button class="big-btn small" onclick="Settings.saveSession()">保存</button>
+      <!-- パスワードゲート -->
+      <div class="case-paper hidden" id="settingsGate">
+        <div class="gate-lock">🔒</div>
+        <h3 class="gate-title">先生用ページ</h3>
+        <p class="muted">このページは先生用です。パスワードを入れてください。</p>
+        <div class="field inline" style="margin-top:10px">
+          <input type="password" id="gatePass" placeholder="パスワード" onkeydown="if(event.key==='Enter')Settings.unlock()">
+          <button class="big-btn small" onclick="Settings.unlock()">解除する</button>
         </div>
-        <div class="whoami" id="whoami"></div>
+      </div>
+
+      <!-- 本体 -->
+      <div id="settingsMain">
+        <div class="case-paper settings-body">
+          <h3 class="settings-h">📚 この画面でできること</h3>
+          <ul class="settings-explain">
+            <li><b>単元フェーズの切替</b>：授業の進みに合わせて、クラス全員が使える手がかりと現場のはんい（1〜50／1〜100）が変わります。</li>
+            <li><b>自分で先へ進みたい子へ</b>：事件を解決して探偵レベル（バッジ）が上がると、その子は先の手がかりを「作問」や「🎓じぶんレベルで挑戦」で先に使えます。先生の設定はクラスの土台、レベルは個人の伸びしろです。</li>
+            <li><b>グループ対決のセッション名</b>：スコアボードの集計をクラス・時間ごとに分けられます。</li>
+          </ul>
+        </div>
+
+        <div class="case-paper settings-body">
+          <h4 class="settings-h">単元フェーズ（クラス共通）</h4>
+          <div class="phase-list" id="phaseList"></div>
+          <div class="field inline" style="margin-top:18px">
+            <label>グループ対決のセッション名</label>
+            <input type="text" id="sessionName" placeholder="7月24日1組">
+            <button class="big-btn small" onclick="Settings.saveSession()">保存</button>
+          </div>
+          <div class="whoami" id="whoami"></div>
+        </div>
+
+        <div class="case-paper settings-body">
+          <h4 class="settings-h">🔑 先生ページのパスワード</h4>
+          <p class="muted" id="passStatus">パスワード未設定</p>
+          <div class="field" id="passOldRow" style="display:none">
+            <label>いまのパスワード</label>
+            <input type="password" id="passOld" placeholder="げんざいのパスワード">
+          </div>
+          <div class="field">
+            <label>あたらしいパスワード（2文字いじょう）</label>
+            <input type="password" id="passNew" placeholder="あたらしいパスワード">
+          </div>
+          <button class="big-btn small" onclick="Settings.savePass()">パスワードを保存</button>
+          <p class="hint-note">※ 教室で使うための かんたんなロックです（強固な認証ではありません）。</p>
+        </div>
       </div>
     </section>
 
@@ -270,12 +319,27 @@
     </div>
   </div>
 
+  <!-- ===== 用語じてんモーダル ===== -->
+  <div id="glossary" class="overlay hidden" onclick="Glossary.close()">
+    <div class="glossary-card" onclick="event.stopPropagation()">
+      <div class="howto-stamp gl-stamp">用語じてん</div>
+      <h2 class="howto-title">📖 かずの ことば辞典</h2>
+      <p class="muted" style="margin-top:-4px">わからない言葉を たしかめよう。</p>
+      <div class="glossary-list" id="glossaryList"></div>
+      <button class="big-btn" onclick="Glossary.close()">とじる</button>
+    </div>
+  </div>
+
   <!-- 演出用のトースト／オーバーレイ -->
   <div id="toast" class="toast"></div>
   <div id="overlay" class="overlay hidden" onclick="UI.closeOverlay()">
     <div class="overlay-card" onclick="event.stopPropagation()">
       <div class="solved-stamp" id="ovStamp">解決</div>
       <div class="ov-icon" id="ovIcon">🎉</div>
+      <div class="ov-culprit hidden" id="ovCulprit">
+        <span class="ovc-label">真犯人</span>
+        <span class="ovc-num" id="ovCulpritNum">?</span>
+      </div>
       <div class="ov-title" id="ovTitle"></div>
       <div class="ov-text" id="ovText"></div>
       <button class="big-btn" onclick="UI.closeOverlay()">つづける</button>

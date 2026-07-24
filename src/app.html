@@ -49,6 +49,38 @@ var LINES = [
   '「数はすべてを知っている。」'
 ];
 
+/* ---------- 探偵レベルによる手がかり解禁（個人の学習ルート） ---------- */
+/* 事件を解決してバッジ（=解決数）がたまると、自分で使える手がかりが増える。
+   先生のフェーズ設定とは別に、進みたい子が先へ進めるようにするしくみ。 */
+var LEVEL_UNLOCK = [
+  { cat: 'parity',   min: 0 },
+  { cat: 'multiple', min: 3 },
+  { cat: 'divisor',  min: 6 },
+  { cat: 'cmul',     min: 10 },
+  { cat: 'cdiv',     min: 15 }
+];
+var LEVEL_RANGE100 = 10; // バッジ10で現場が1〜100に
+
+/* ---------- 用語辞典（教科書の定義にそろえた説明） ---------- */
+var GLOSSARY = [
+  { term: '偶数', yomi: 'ぐうすう', color: 'parity',
+    def: '2でわり切れる整数のこと。', ex: '0, 2, 4, 6, 8 …' },
+  { term: '奇数', yomi: 'きすう', color: 'parity',
+    def: '2でわり切れない整数のこと。', ex: '1, 3, 5, 7, 9 …' },
+  { term: '倍数', yomi: 'ばいすう', color: 'multiple',
+    def: 'ある数に整数をかけてできる数。（0は倍数に入れない）', ex: '3の倍数 → 3, 6, 9, 12 …' },
+  { term: '公倍数', yomi: 'こうばいすう', color: 'cmul',
+    def: '2つの数の、どちらの倍数にもなっている数。', ex: '3と4の公倍数 → 12, 24, 36 …' },
+  { term: '最小公倍数', yomi: 'さいしょうこうばいすう', color: 'cmul',
+    def: '公倍数のうち、いちばん小さい数。公倍数は最小公倍数の倍数になっている。', ex: '3と4 → 12' },
+  { term: '約数', yomi: 'やくすう', color: 'divisor',
+    def: 'ある数をわり切ることのできる整数。（1と、もとの数も入れる）', ex: '12の約数 → 1, 2, 3, 4, 6, 12' },
+  { term: '公約数', yomi: 'こうやくすう', color: 'cdiv',
+    def: '2つの数の、どちらの約数にもなっている数。', ex: '12と18の公約数 → 1, 2, 3, 6' },
+  { term: '最大公約数', yomi: 'さいだいこうやくすう', color: 'cdiv',
+    def: '公約数のうち、いちばん大きい数。', ex: '12と18 → 6' }
+];
+
 /* ---------- アプリ状態 ---------- */
 var APP = {
   phase: 1,
@@ -60,7 +92,9 @@ var APP = {
   badges: 0,
   solved: 0,
   bestClues: 0,
-  groupSession: ''
+  groupSession: '',
+  levelMode: false,   // 通常捜査で「じぶんレベル」を使うか
+  teacherUnlocked: false // 先生ページのロック解除済みか（セッション中）
 };
 
 /* ============================================================
@@ -86,34 +120,36 @@ var Engine = {
   gcd: function (a, b) { while (b) { var t = b; b = a % b; a = t; } return a; },
   digitsOf: function (n) { return String(n).length; },
 
-  /** 手がかり記述子から {desc, cat, tag, text, match} を作る */
+  /** 手がかり記述子から {desc, cat, tag, text, short, match} を作る
+   *  short … タップ指示に使う短い言い方（例「3の倍数」） */
   makeHint: function (d) {
-    var cat = d.category, tag = '', text = '', match;
+    var cat = d.category, tag = '', text = '', short = '', match;
     if (cat === 'basic') {
       cat = 'basic';
-      if (d.kind === 'gt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 大きい'; match = function (n) { return n > d.v; }; }
-      else if (d.kind === 'lt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 小さい'; match = function (n) { return n < d.v; }; }
-      else if (d.kind === 'ones') { tag = '一の位'; text = '一の位は【' + d.d + '】'; match = function (n) { return n % 10 === d.d; }; }
-      else if (d.kind === 'digits') { tag = 'けた'; text = '【' + d.k + '】けたの数'; match = function (n) { return Engine.digitsOf(n) === d.k; }; }
+      if (d.kind === 'gt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 大きい'; short = d.v + 'より大きい数'; match = function (n) { return n > d.v; }; }
+      else if (d.kind === 'lt') { tag = '大小'; text = '犯人の数は【' + d.v + '】より 小さい'; short = d.v + 'より小さい数'; match = function (n) { return n < d.v; }; }
+      else if (d.kind === 'ones') { tag = '一の位'; text = '一の位は【' + d.d + '】'; short = '一の位が' + d.d + 'の数'; match = function (n) { return n % 10 === d.d; }; }
+      else if (d.kind === 'digits') { tag = 'けた'; text = '【' + d.k + '】けたの数'; short = d.k + 'けたの数'; match = function (n) { return Engine.digitsOf(n) === d.k; }; }
     } else if (cat === 'parity') {
       var isEven = d.parity === 'even';
       tag = CATS.parity.tag;
       text = '犯人の数は ' + (isEven ? '偶数（ぐうすう）' : '奇数（きすう）');
+      short = isEven ? '偶数' : '奇数';
       match = function (n) { return (n % 2 === 0) === isEven; };
     } else if (cat === 'multiple') {
-      tag = CATS.multiple.tag; text = '犯人の数は【' + d.k + '】の倍数';
+      tag = CATS.multiple.tag; text = '犯人の数は【' + d.k + '】の倍数'; short = d.k + 'の倍数';
       match = function (n) { return n % d.k === 0; };
     } else if (cat === 'divisor') {
-      tag = CATS.divisor.tag; text = '犯人の数は【' + d.k + '】の約数';
+      tag = CATS.divisor.tag; text = '犯人の数は【' + d.k + '】の約数'; short = d.k + 'の約数';
       match = function (n) { return d.k % n === 0; };
     } else if (cat === 'cmul') {
-      tag = CATS.cmul.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公倍数';
+      tag = CATS.cmul.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公倍数'; short = d.a + 'と' + d.b + 'の公倍数';
       match = function (n) { return n % d.a === 0 && n % d.b === 0; };
     } else if (cat === 'cdiv') {
-      tag = CATS.cdiv.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公約数';
+      tag = CATS.cdiv.tag; text = '犯人の数は【' + d.a + '】と【' + d.b + '】の公約数'; short = d.a + 'と' + d.b + 'の公約数';
       match = function (n) { return d.a % n === 0 && d.b % n === 0; };
     }
-    return { desc: d, cat: cat, tag: tag, text: text, match: match };
+    return { desc: d, cat: cat, tag: tag, text: text, short: short, match: match };
   },
 
   candidates: function (hints, range) {
@@ -221,12 +257,37 @@ var UI = {
   },
   overlay: function (icon, title, text, stamp) {
     document.getElementById('ovIcon').textContent = icon;
+    document.getElementById('ovIcon').classList.remove('hidden');
+    document.getElementById('ovCulprit').classList.add('hidden');
     document.getElementById('ovTitle').textContent = title;
     document.getElementById('ovText').textContent = text;
     document.getElementById('ovStamp').textContent = stamp || '解決';
+    document.getElementById('ovStamp').className = 'solved-stamp';
     document.getElementById('overlay').classList.remove('hidden');
   },
-  closeOverlay: function () { document.getElementById('overlay').classList.add('hidden'); },
+  /** 犯人特定の演出つきオーバーレイ */
+  winReveal: function (title, text, culprit) {
+    document.getElementById('ovIcon').classList.add('hidden');
+    var cul = document.getElementById('ovCulprit');
+    cul.classList.remove('hidden');
+    document.getElementById('ovCulpritNum').textContent = culprit;
+    document.getElementById('ovTitle').textContent = title;
+    document.getElementById('ovText').textContent = text;
+    var stamp = document.getElementById('ovStamp');
+    stamp.textContent = '解決'; stamp.className = 'solved-stamp';
+    document.getElementById('overlay').classList.remove('hidden');
+    // スタンプを叩きつける
+    setTimeout(function () { stamp.classList.add('slam'); }, 450);
+  },
+  closeOverlay: function () {
+    document.getElementById('overlay').classList.add('hidden');
+    var g = document.getElementById('numberGrid'); if (g) g.classList.remove('revealing');
+  },
+  /** マスをふるわせる（まちがいの合図） */
+  nudge: function (el) {
+    el.classList.add('shake');
+    setTimeout(function () { el.classList.remove('shake'); }, 400);
+  },
 
   buildGrid: function (container, range, opts) {
     opts = opts || {};
@@ -289,104 +350,231 @@ var Home = {
 };
 
 /* ============================================================
- *  Game: 能動的な推理
+ *  Game: 能動的な推理（自分でしぼりこむ方式）
+ *
+ *  流れ:
+ *    1) 「手がかりを調べる」で証拠を1つ出す
+ *    2) その手がかりに“合うマス”を自分で全部タップして選ぶ（ドラッグも可）
+ *    3) 全部えらぶと、合わないマスが消え、犯人候補が濃くなる
+ *    4) 候補が1つになったら＝犯人。スポットライト演出で解決！
  * ============================================================ */
 var Game = {
-  puzzle: null,
-  revealed: [],
-  solved: false,
-  caseNo: 1,
+  puzzle: null, range: 50, solved: false, caseNo: 1,
+  roundIdx: -1, selecting: false, finalGuess: false,
+  alive: {}, curHint: null, matchSet: {}, matchList: [], matchCount: 0, kept: {}, keptCount: 0,
+  dragging: false, dragMoved: false, downRef: null, downProcessed: false,
 
-  newGame: function () { Game.setup(Engine.generatePuzzle(APP.cats, APP.range), APP.range); },
+  currentCats: function () { return APP.levelMode ? Progress.personalCats() : APP.cats; },
+  currentRange: function () { return APP.levelMode ? Progress.personalRange() : APP.range; },
+
+  toggleLevel: function () {
+    APP.levelMode = !APP.levelMode;
+    Game.updateLevelToggle();
+    Game.newGame();
+    UI.toast(APP.levelMode ? 'じぶんレベルで挑戦！' : 'クラスのフェーズで挑戦');
+  },
+  updateLevelToggle: function () {
+    var b = document.getElementById('levelToggle');
+    if (!b) return;
+    b.classList.toggle('on', APP.levelMode);
+    b.textContent = (APP.levelMode ? '🎓 じぶんレベル：ON' : '🎓 じぶんレベルで挑戦') +
+      (APP.levelMode ? '（1〜' + Progress.personalRange() + '）' : '');
+  },
+
+  newGame: function () {
+    var r = Game.currentRange();
+    Game.setup(Engine.generatePuzzle(Game.currentCats(), r), r);
+  },
 
   /** 任意の問題をセット（作問プレイ・認定試験でも使う） */
   setup: function (puzzle, range, brief) {
-    Game.puzzle = puzzle;
-    Game.revealed = [];
-    Game.solved = false;
+    Game.puzzle = puzzle; Game.range = range;
+    Game.solved = false; Game.selecting = false; Game.finalGuess = false;
+    Game.roundIdx = -1;
+    Game.alive = {}; for (var n = 1; n <= range; n++) Game.alive[n] = true;
+    Game.kept = {}; Game.keptCount = 0; Game.matchList = []; Game.matchSet = {}; Game.matchCount = 0;
     Game.caseNo++;
     document.getElementById('caseNo').textContent = ('00' + Game.caseNo).slice(-3);
     document.getElementById('rangeLabel2').textContent = range;
     document.getElementById('caseBrief').textContent = brief ||
-      'この中に「ひみつの数」がひとりだけ かくれている。手がかりを1つずつ調べて、あやしい数を消していこう。わかったら数字をタップして告発だ！';
+      'この中に「ひみつの数」が ひとりだけ かくれている。手がかりを調べて、合う数を自分でタップしてしぼりこめ！';
     document.getElementById('usedHints').textContent = '0';
     document.getElementById('totalHints').textContent = puzzle.hints.length;
     document.getElementById('candidateCount').textContent = range;
-    UI.buildGrid(document.getElementById('numberGrid'), range, {
-      suspect: true, onTap: function (n, el) { Game.accuse(n, el); }
-    });
+    Game.buildGrid(range);
+    document.getElementById('numberGrid').classList.remove('revealing');
     document.getElementById('clueList').innerHTML =
-      '<div class="clue-placeholder">「次の手がかりを調べる」を押して、証拠を集めよう。</div>';
+      '<div class="clue-placeholder">「手がかりを調べる」を押して、捜査スタート！</div>';
     var btn = document.getElementById('revealBtn');
-    btn.disabled = false; btn.textContent = '🔍 次の手がかりを調べる';
-    document.getElementById('accuseHint').textContent = 'わかったら、現場の数字をタップして告発！';
+    btn.disabled = false; btn.textContent = '🔍 さいしょの手がかりを調べる';
+    document.getElementById('accuseHint').textContent = 'まずは手がかりを1つ調べよう。';
+    Game.updateLevelToggle();
   },
 
+  buildGrid: function (range) {
+    var grid = document.getElementById('numberGrid');
+    grid.innerHTML = '';
+    for (var n = 1; n <= range; n++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell suspect';
+      cell.textContent = n;
+      cell.dataset.n = n;
+      (function (num, el) {
+        el.addEventListener('pointerdown', function (e) { e.preventDefault(); Game.onDown(num, el); });
+        el.addEventListener('pointerenter', function () { Game.onEnter(num, el); });
+      })(n, cell);
+      grid.appendChild(cell);
+    }
+    if (!Game._upBound) {
+      document.addEventListener('pointerup', function () { Game.onUp(); });
+      Game._upBound = true;
+    }
+  },
+
+  /* ---- ポインタ操作（タップ＋ドラッグ選択） ---- */
+  onDown: function (n, el) {
+    if (Game.solved) return;
+    Game.dragging = true; Game.dragMoved = false; Game.downProcessed = false; Game.downRef = { n: n, el: el };
+  },
+  onEnter: function (n, el) {
+    if (!Game.dragging || Game.solved) return;
+    Game.dragMoved = true;
+    if (!Game.downProcessed) { Game.keep(Game.downRef.n, Game.downRef.el, true); Game.downProcessed = true; }
+    Game.keep(n, el, true);
+  },
+  onUp: function () {
+    if (!Game.dragging) return;
+    Game.dragging = false;
+    if (!Game.dragMoved && Game.downRef) Game.keep(Game.downRef.n, Game.downRef.el, false);
+    Game.downRef = null;
+  },
+
+  /** マスをえらぶ（silent=true はドラッグ中でヒントを出さない） */
+  keep: function (n, el, silent) {
+    if (Game.solved) return;
+    if (!Game.selecting) {
+      // 保険モード（全手がかりを使っても複数のこったとき）＝タップで告発
+      if (Game.finalGuess && Game.alive[n]) {
+        if (n === Game.puzzle.secret) Game.winSequence(n);
+        else if (!silent) { UI.nudge(el); UI.toast('ちがうみたい。よく見て！'); }
+      } else if (!silent) UI.toast('まず「手がかりを調べる」を押してね');
+      return;
+    }
+    if (!Game.alive[n]) { if (!silent) UI.toast('その数は もう消えているよ'); return; }
+    if (Game.matchSet[n]) {
+      if (Game.kept[n]) return;
+      Game.kept[n] = true; Game.keptCount++;
+      Game.bumpHeat(el);
+      Game.updateCounter();
+      if (Game.keptCount >= Game.matchCount) Game.completeRound();
+    } else {
+      if (!silent) { UI.nudge(el); UI.toast('それは「' + Game.curHint.short + '」じゃないみたい。よく見て！'); }
+    }
+  },
+
+  bumpHeat: function (el) {
+    var h = (Number(el.dataset.heat) || 0) + 1;
+    el.dataset.heat = h;
+    el.classList.remove('heat1', 'heat2', 'heat3', 'heat4', 'heat5', 'heat6');
+    el.classList.add('heat' + Math.min(h, 6));
+    el.classList.add('kept-pop');
+    setTimeout(function () { el.classList.remove('kept-pop'); }, 260);
+  },
+
+  updateCounter: function () {
+    var remain = Game.matchCount - Game.keptCount;
+    document.getElementById('accuseHint').innerHTML =
+      '👉 <b>' + Game.curHint.short + '</b> のマスを ぜんぶタップ！（のこり <b>' + remain + '</b>）';
+    document.getElementById('revealBtn').textContent = 'ヒント（のこり ' + remain + ' マス）';
+  },
+
+  /** ボタン：選択中はヒント、そうでなければ次の手がかり */
   revealNext: function () {
     if (Game.solved) return;
-    var idx = Game.revealed.length;
-    if (idx >= Game.puzzle.hints.length) return;
-    if (idx === 0) document.getElementById('clueList').innerHTML = '';
+    if (Game.selecting) { Game.hintRemaining(); return; }
+    if (Game.roundIdx + 1 >= Game.puzzle.hints.length) return;
+    Game.revealClue();
+  },
 
-    var hint = Game.puzzle.hints[idx];
-    Game.revealed.push(hint);
+  hintRemaining: function () {
+    var cells = document.querySelectorAll('#numberGrid .cell');
+    var shown = 0;
+    cells.forEach(function (c) {
+      var n = Number(c.dataset.n);
+      if (Game.matchSet[n] && !Game.kept[n]) { c.classList.add('pulse'); setTimeout(function () { c.classList.remove('pulse'); }, 1200); shown++; }
+    });
+    UI.toast('あと ' + (Game.matchCount - Game.keptCount) + ' マス！「' + Game.curHint.short + '」をさがそう');
+  },
 
+  revealClue: function () {
+    Game.roundIdx++;
+    var hint = Game.puzzle.hints[Game.roundIdx];
+    Game.curHint = hint;
+    if (Game.roundIdx === 0) document.getElementById('clueList').innerHTML = '';
     var card = document.createElement('div');
     card.className = 'clue-card cat-' + hint.cat;
     card.innerHTML = '<span class="cc-tag">' + hint.tag + '</span><span class="cc-text">' + hint.text + '</span>';
     document.getElementById('clueList').appendChild(card);
+    document.getElementById('usedHints').textContent = Game.roundIdx + 1;
 
-    document.getElementById('usedHints').textContent = Game.revealed.length;
-    Game.applyFilter();
-
-    if (Game.revealed.length >= Game.puzzle.hints.length) {
-      var btn = document.getElementById('revealBtn');
-      btn.disabled = true; btn.textContent = '証拠は出そろった！';
-      document.getElementById('accuseHint').textContent = '証拠はすべて出た。犯人の数字をタップして告発せよ！';
-    }
+    Game.matchList = [];
+    Object.keys(Game.alive).forEach(function (k) { var n = Number(k); if (hint.match(n)) Game.matchList.push(n); });
+    Game.matchSet = {}; Game.matchList.forEach(function (n) { Game.matchSet[n] = true; });
+    Game.matchCount = Game.matchList.length;
+    Game.kept = {}; Game.keptCount = 0;
+    Game.selecting = true;
+    document.getElementById('revealBtn').disabled = false;
+    Game.updateCounter();
   },
 
-  applyFilter: function () {
-    var cand = Engine.candidates(Game.revealed, APP.rangeOverride || Game.puzzle.range);
-    var alive = {};
-    cand.forEach(function (n) { alive[n] = true; });
+  completeRound: function () {
+    // 合わないマスを消す
     var cells = document.querySelectorAll('#numberGrid .cell');
     cells.forEach(function (c) {
       var n = Number(c.dataset.n);
-      if (alive[n]) { c.classList.remove('dead'); if (!Game.solved) c.classList.add('suspect'); }
-      else { c.classList.add('dead'); c.classList.remove('suspect'); }
+      if (Game.alive[n] && !Game.matchSet[n]) {
+        c.classList.add('dead'); c.classList.remove('suspect');
+        c.classList.remove('heat1', 'heat2', 'heat3', 'heat4', 'heat5', 'heat6');
+      }
     });
-    document.getElementById('candidateCount').textContent = cand.length;
-  },
+    Game.alive = {}; Game.matchList.forEach(function (n) { Game.alive[n] = true; });
+    Game.selecting = false;
+    document.getElementById('candidateCount').textContent = Game.matchCount;
 
-  accuse: function (n, el) {
-    if (Game.solved) return;
-    if (el.classList.contains('dead')) { UI.toast('その数は手がかりで消えたよ'); return; }
-    if (n === Game.puzzle.secret) { Game.win(n, el); return; }
-    // 生き残っているが正解でない＝まだ手がかりが足りない
-    if (Game.revealed.length < Game.puzzle.hints.length) {
-      UI.toast('うーん、まだ断定できない。次の手がかりを調べよう！');
-    } else {
-      UI.toast('ちがうみたい。証拠を見直そう。');
+    if (Game.matchCount === 1) { Game.winSequence(Game.matchList[0]); return; }
+    if (Game.roundIdx + 1 >= Game.puzzle.hints.length) {
+      Game.finalGuess = true;
+      document.getElementById('revealBtn').disabled = true;
+      document.getElementById('revealBtn').textContent = '証拠は出そろった！';
+      document.getElementById('accuseHint').innerHTML = 'のこった中から <b>犯人をタップ</b> して告発！';
+      return;
     }
+    var btn = document.getElementById('revealBtn');
+    btn.disabled = false; btn.textContent = '🔍 次の手がかりを調べる';
+    document.getElementById('accuseHint').innerHTML = 'しぼりこめた！ 次の証拠を調べよう。（のこり <b>' + Game.matchCount + '</b> 人）';
   },
 
-  win: function (answer, el) {
-    Game.solved = true;
-    document.getElementById('revealBtn').disabled = true;
-    var cells = document.querySelectorAll('#numberGrid .cell');
-    cells.forEach(function (c) {
-      c.classList.remove('suspect');
-      if (Number(c.dataset.n) === answer) { c.classList.remove('dead'); c.classList.add('answer'); }
+  winSequence: function (n) {
+    Game.solved = true; Game.selecting = false;
+    var btn = document.getElementById('revealBtn');
+    btn.disabled = true; btn.textContent = '🎉 事件かいけつ！';
+    document.getElementById('accuseHint').textContent = '';
+    var grid = document.getElementById('numberGrid');
+    var target = null;
+    grid.querySelectorAll('.cell').forEach(function (c) {
+      c.classList.remove('suspect', 'pulse');
+      if (Number(c.dataset.n) === n) target = c;
     });
-    var used = Game.revealed.length, total = Game.puzzle.hints.length;
-    var sharp = used < total;
+    grid.classList.add('revealing');           // 周りを暗くする
+    if (target) target.classList.add('answer', 'spotlight');
+
+    var used = Game.roundIdx + 1, total = Game.puzzle.hints.length, sharp = used < total;
     Progress.award(used);
-    var msg = 'ひみつの数は「' + answer + '」だ！\n調べた手がかり：' + used + ' / ' + total + '　🏅バッジ +1';
-    if (sharp) msg = '⚡するどい推理！\n' + msg;
     setTimeout(function () {
-      UI.overlay('🕵️', sharp ? 'みごと解決！' : '事件かいけつ！', msg, '解決');
-    }, 500);
+      var msg = '真犯人は「' + n + '」だった！\n調べた手がかり：' + used + ' / ' + total + '　🏅バッジ +1';
+      if (sharp) msg = '⚡ するどい推理！ ' + used + 'つの手がかりで見やぶった！\n' + msg;
+      UI.winReveal(sharp ? 'みごと解決！' : '事件かいけつ！', msg, n);
+    }, 1200);
   }
 };
 
@@ -442,23 +630,24 @@ var Highlight = {
  * ============================================================ */
 var Create = {
   rows: [],
+  range: function () { return Progress.personalRange(); },
   init: function () {
-    document.getElementById('createMax').textContent = APP.range;
-    document.getElementById('createSecret').max = APP.range;
+    document.getElementById('createMax').textContent = Create.range();
+    document.getElementById('createSecret').max = Create.range();
     Create.rows = [];
     Create.renderBuilder();
     Create.renderAddButtons();
     Create.recalc();
     Create.loadGallery();
   },
-  /** 追加できる手がかりの種類（基本＋解禁済み単元） */
+  /** 追加できる手がかりの種類（基本＋“探偵レベルで解禁ずみ”の単元） */
   addButtons: function () {
     var btns = [
       { key: 'gt', label: '＋ ◯より大きい', color: 'var(--c-basic)' },
       { key: 'lt', label: '＋ ◯より小さい', color: 'var(--c-basic)' },
       { key: 'ones', label: '＋ 一の位', color: 'var(--c-basic)' }
     ];
-    APP.cats.forEach(function (cat) {
+    Progress.personalCats().forEach(function (cat) {
       btns.push({ key: cat, label: '＋ ' + CATS[cat].name, color: 'var(--c-' + cat + ')' });
     });
     return btns;
@@ -474,6 +663,14 @@ var Create = {
       el.onclick = function () { Create.addRow(b.key); };
       row.appendChild(el);
     });
+    // まだ解禁されていない手がかりを、解禁条件つきで表示（自己学習の目標に）
+    var next = Progress.nextUnlock();
+    if (next) {
+      var lock = document.createElement('span');
+      lock.className = 'lock-chip';
+      lock.textContent = '🔒 ' + CATS[next.cat].name + '（あと ' + (next.min - APP.badges) + ' 事件で解禁）';
+      row.appendChild(lock);
+    }
   },
   addRow: function (key) {
     if (Create.rows.length >= 4) { UI.toast('手がかりは4こまでだよ'); return; }
@@ -540,7 +737,7 @@ var Create = {
   },
   recalc: function () {
     var hints = Create.toHints();
-    var cand = Engine.candidates(hints, APP.range);
+    var cand = Engine.candidates(hints, Create.range());
     document.getElementById('createCandidates').textContent = cand.length;
     var secret = Number(document.getElementById('createSecret').value);
     var note = document.getElementById('createNote');
@@ -552,11 +749,11 @@ var Create = {
   save: function () {
     var secret = Number(document.getElementById('createSecret').value);
     var hints = Create.toHints();
-    var cand = Engine.candidates(hints, APP.range);
+    var cand = Engine.candidates(hints, Create.range());
     if (hints.length < 2) { UI.toast('手がかりは2こ以上つけてね'); return; }
     if (cand.indexOf(secret) < 0) { UI.toast('ひみつの数が手がかりに合っていないよ'); return; }
     var problem = {
-      secret: secret, range: APP.range,
+      secret: secret, range: Create.range(),
       hints: hints.map(function (h) { return h.desc; }),
       author: document.getElementById('createAuthor').value || APP.name || 'ななし探偵',
       candidates: cand.length
@@ -731,19 +928,26 @@ var Dex = {
       { cat: 'cmul', icon: CATS.cmul.icon, name: '公倍数', desc: '2つの数 両方の倍数', phase: 4 },
       { cat: 'cdiv', icon: CATS.cdiv.icon, name: '公約数', desc: '2つの数 両方の約数', phase: 5 }
     ];
+    var personal = Progress.personalCats();
     var map = document.getElementById('dexMap');
     map.innerHTML = '';
     steps.forEach(function (s) {
-      var unlocked = s.phase === 0 || APP.cats.indexOf(s.cat) >= 0;
+      var byClass = s.phase === 0 || APP.cats.indexOf(s.cat) >= 0;
+      var byLevel = s.phase === 0 || personal.indexOf(s.cat) >= 0;
+      var unlocked = byClass || byLevel;
       var isNow = s.phase === APP.phase;
       var node = document.createElement('div');
       node.className = 'dex-node' + (unlocked ? '' : ' locked') + (isNow ? ' current' : '');
       node.style.borderLeftColor = 'var(--c-' + s.cat + ')';
-      var badge = s.phase === 0
-        ? '<span class="dn-badge on">いつでも</span>'
-        : (isNow ? '<span class="dn-badge now">いま解禁</span>'
-                 : (unlocked ? '<span class="dn-badge on">解禁ずみ</span>'
-                             : '<span class="dn-badge off">🔒フェーズ' + s.phase + '</span>'));
+      var badge;
+      if (s.phase === 0) badge = '<span class="dn-badge on">いつでも</span>';
+      else if (byClass && isNow) badge = '<span class="dn-badge now">クラスで解禁中</span>';
+      else if (unlocked) badge = '<span class="dn-badge on">' + (byClass ? '解禁ずみ' : '🎓レベル解禁') + '</span>';
+      else {
+        var lv = LEVEL_UNLOCK.filter(function (u) { return u.cat === s.cat; })[0];
+        var lvTxt = lv ? '／🎓あと' + (lv.min - APP.badges) + '事件' : '';
+        badge = '<span class="dn-badge off">🔒フェーズ' + s.phase + lvTxt + '</span>';
+      }
       node.innerHTML = '<div class="dn-phase">' + (s.phase === 0 ? '基' : s.phase) + '</div>' +
         '<div class="dn-body"><div class="dn-name"><span class="dn-icon">' + s.icon + '</span>' + s.name + '</div>' +
         '<div class="dn-desc">' + s.desc + '</div></div>' + badge;
@@ -771,6 +975,18 @@ var Progress = {
     var r = RANKS[0];
     RANKS.forEach(function (x) { if (badges >= x.min) r = x; });
     return r;
+  },
+  /** 探偵レベル（バッジ数）で個人的に解禁されている単元カテゴリ */
+  personalCats: function () {
+    return LEVEL_UNLOCK.filter(function (u) { return APP.badges >= u.min; }).map(function (u) { return u.cat; });
+  },
+  personalRange: function () { return APP.badges >= LEVEL_RANGE100 ? 100 : 50; },
+  /** つぎに個人解禁される手がかり（無ければ null） */
+  nextUnlock: function () {
+    for (var i = 0; i < LEVEL_UNLOCK.length; i++) {
+      if (APP.badges < LEVEL_UNLOCK[i].min) return LEVEL_UNLOCK[i];
+    }
+    return null;
   },
   award: function (cluesUsed) {
     var before = Progress.rankFor(APP.badges);
@@ -800,7 +1016,34 @@ var Progress = {
  *  Settings: 単元フェーズ切替（教員）
  * ============================================================ */
 var Settings = {
+  passSet: false,
+  /** 入口：パスワードで守る（設定済み かつ 未解除なら ゲートを表示） */
   render: function () {
+    Server.call('isTeacherPassSet', []).then(function (isSet) {
+      Settings.passSet = !!isSet;
+      if (isSet && !APP.teacherUnlocked) Settings.showGate();
+      else Settings.showMain();
+    }).catch(function () {
+      // GAS 非接続（プレビュー）ではロックせず開く
+      Settings.passSet = false; Settings.showMain();
+    });
+  },
+  showGate: function () {
+    document.getElementById('settingsGate').classList.remove('hidden');
+    document.getElementById('settingsMain').classList.add('hidden');
+    document.getElementById('gatePass').value = '';
+    setTimeout(function () { document.getElementById('gatePass').focus(); }, 100);
+  },
+  unlock: function () {
+    var pw = document.getElementById('gatePass').value;
+    Server.call('checkTeacherPass', [pw]).then(function (ok) {
+      if (ok) { APP.teacherUnlocked = true; Settings.showMain(); UI.toast('ロックを解除しました'); }
+      else UI.toast('パスワードが ちがいます');
+    }).catch(function () { APP.teacherUnlocked = true; Settings.showMain(); });
+  },
+  showMain: function () {
+    document.getElementById('settingsGate').classList.add('hidden');
+    document.getElementById('settingsMain').classList.remove('hidden');
     var list = document.getElementById('phaseList');
     list.innerHTML = '';
     PHASES.forEach(function (ph) {
@@ -817,6 +1060,21 @@ var Settings = {
       ? '記録の保存先：<b>' + APP.userId + '</b>（Googleアカウント／クラウド保存。端末を変えても記録が続きます）'
       : '記録の保存先：この端末（名前：' + APP.name + '）。GAS公開＋Googleログインでクラウド保存に切りかわります。';
     document.getElementById('whoami').innerHTML = '🗄 ' + who;
+    document.getElementById('passStatus').textContent = Settings.passSet
+      ? '🔒 パスワード設定ずみ' : '🔓 パスワード未設定（だれでも開けます）';
+    document.getElementById('passOldRow').style.display = Settings.passSet ? '' : 'none';
+  },
+  savePass: function () {
+    var oldP = document.getElementById('passOld').value;
+    var newP = document.getElementById('passNew').value;
+    Server.call('setTeacherPass', [oldP, newP]).then(function (res) {
+      if (res && res.ok) {
+        UI.toast('パスワードを保存しました');
+        APP.teacherUnlocked = true;
+        document.getElementById('passOld').value = ''; document.getElementById('passNew').value = '';
+        Settings.render();
+      } else UI.toast((res && res.reason) || 'ほぞんできませんでした');
+    }).catch(function () { UI.toast('この画面ではパスワードを保存できません（GAS公開後に使えます）'); });
   },
   setPhase: function (n) {
     var prevRange = APP.range;
@@ -848,9 +1106,10 @@ var Settings = {
 var HowTo = {
   steps: [
     '事件ファイルには「<b>ひみつの数</b>」が1つだけ かくれている。現場（数表）から見つけ出そう。',
-    '「<b>次の手がかりを調べる</b>」を押すと証拠が1つ出る。手がかりに<b>合わない数は現場から消える</b>（✕）。',
-    '手がかりは種類ごとに<b>色分け</b>。単元が進むと<b>新しい手がかりが解禁</b>されていくよ（📔図鑑で確認）。',
-    '犯人がわかったら、<b>現場の数字をタップして告発</b>！ 少ない手がかりで当てるほど「⚡するどい推理」だ。'
+    '「<b>手がかりを調べる</b>」で証拠が1つ出る。その手がかりに<b>合う数を、自分で全部タップ</b>してえらぼう（ドラッグでもOK）。',
+    '合う数を全部えらぶと、<b>合わない数が消え</b>、のこった犯人候補が<b>だんだん濃く</b>なっていくよ。',
+    '候補が1人になったら＝<b>真犯人</b>！ 少ない手がかりで見やぶるほど「⚡するどい推理」だ。',
+    'わからない言葉は「<b>📖 用語じてん</b>」で確認できるよ。'
   ],
   open: function () {
     var ol = document.getElementById('howtoSteps');
@@ -862,6 +1121,29 @@ var HowTo = {
     document.getElementById('howto').classList.add('hidden');
     localStorage.setItem('seenHowto', '1');
   }
+};
+
+/* ============================================================
+ *  Glossary: 用語じてん（教科書の定義にそろえた説明）
+ *  ホームからも、捜査中からも開ける。
+ * ============================================================ */
+var Glossary = {
+  open: function () {
+    var box = document.getElementById('glossaryList');
+    box.innerHTML = '';
+    GLOSSARY.forEach(function (g) {
+      var card = document.createElement('div');
+      card.className = 'gl-card';
+      card.style.borderLeftColor = 'var(--c-' + g.color + ')';
+      card.innerHTML =
+        '<div class="gl-term"><b>' + g.term + '</b><span class="gl-yomi">（' + g.yomi + '）</span></div>' +
+        '<div class="gl-def">' + g.def + '</div>' +
+        '<div class="gl-ex">れい： ' + g.ex + '</div>';
+      box.appendChild(card);
+    });
+    document.getElementById('glossary').classList.remove('hidden');
+  },
+  close: function () { document.getElementById('glossary').classList.add('hidden'); }
 };
 
 /* ============================================================

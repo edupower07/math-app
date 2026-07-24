@@ -145,6 +145,43 @@ function setConfig(key, value) {
   return getConfig();
 }
 
+/** config の生の値を1件取得（getConfig に含めない秘匿値用） */
+function rawConfigValue_(key) {
+  var rows = readRows_(SHEETS.CONFIG);
+  var found = '';
+  rows.forEach(function (r) { if (r.key === key) found = r.value; });
+  return found;
+}
+
+/* ============================================================
+ *  先生ページのパスワード（かんたんな教室向けゲート）
+ *  ※ クライアント側の画面ロック用。強固な認証ではありません。
+ * ============================================================ */
+
+/** パスワードが設定済みかどうか */
+function isTeacherPassSet() {
+  return String(rawConfigValue_('teacherPass') || '') !== '';
+}
+
+/** パスワード照合。未設定なら常に true（初回に設定してもらう） */
+function checkTeacherPass(pw) {
+  var cur = String(rawConfigValue_('teacherPass') || '');
+  if (cur === '') return true;
+  return String(pw || '') === cur;
+}
+
+/**
+ * パスワードの設定・変更。
+ * 未設定なら newPw をそのまま設定。設定済みなら oldPw が一致したときのみ変更。
+ */
+function setTeacherPass(oldPw, newPw) {
+  var cur = String(rawConfigValue_('teacherPass') || '');
+  if (cur !== '' && String(oldPw || '') !== cur) return { ok: false, reason: 'いまのパスワードが ちがいます' };
+  if (!newPw || String(newPw).length < 2) return { ok: false, reason: 'パスワードは2文字いじょうにしてください' };
+  setConfig('teacherPass', String(newPw));
+  return { ok: true };
+}
+
 /* ============================================================
  *  problems（作問モード）
  * ============================================================ */
