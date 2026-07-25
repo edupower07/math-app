@@ -145,10 +145,11 @@ WebFetch も同じプロキシを通るので同様に 403 になる。
 | ファイル | 役割 |
 |---|---|
 | `DESIGN.md` | **v4 の絵づくり仕様と90秒の絵コンテ**（まずこれを読む） |
-| `director.js` | 録画用オーバーレイ（ズーム／カーソル／テロップ／チップ／カード）をページに注入する |
-| `recorder2.py` | アプリを実際に操作して画面録画する本体（Playwright） |
+| `director.js` | 録画用オーバーレイをページに注入する（v4 ではズーム／カーソル／波紋／リングだけ使う） |
+| `recorder_v4.py` | **v4 の収録スクリプト**。カットごとに mp4 を書き出す |
+| `recorder2.py` | v3 の収録スクリプト（テロップ焼き込み版・参考用に残置） |
 | `diagnose_interactions.py` | クリックやゲーム進行がうまくいかない時の切り分け用（動画なしで高速に検証） |
-| `remotion/` | v4 の編集プロジェクト（デザインシステム・共通部品・キーフレーム） |
+| `remotion/` | v4 の編集プロジェクト。`src/Main.tsx` が90秒の本編 |
 
 > v4 では **テロップ類を録画に焼き込まない**。director.js はズームとカーソルだけ担当し、
 > テロップ・証拠カード・カウンタ・スタンプは Remotion 側で合成する。
@@ -180,7 +181,13 @@ ffmpeg -i video2/*.webm -c:v libx264 -pix_fmt yuv420p -crf 21 -r 30 out.mp4
 
 ```bash
 cd tools/video/remotion
-python3 scripts/fetch-fonts.py   # 初回のみ（woff2 は git 管理外）
+python3 scripts/fetch-fonts.py            # 初回のみ（woff2 は git 管理外）
 npm install
-npm run stills                   # キーフレームを out/ に書き出して絵を確認
+cd ../../.. && python3 tools/video/recorder_v4.py   # 素材を撮る（git 管理外）
+cd tools/video/remotion
+npm run stills                            # キーフレームで絵を確認
+npm run render                            # 90秒の本編を out/main.mp4 に書き出す
 ```
+
+> フォントと画面録画は容量が大きいので git に入れていない。
+> どちらもスクリプトで決定論的に作り直せる。

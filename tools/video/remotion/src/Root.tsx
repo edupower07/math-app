@@ -1,6 +1,7 @@
 import React from "react";
 import { Composition } from "remotion";
 import { V } from "./theme";
+import { Main } from "./Main";
 import {
   KfHook,
   KfLogo,
@@ -25,6 +26,14 @@ const KEYFRAMES = [
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition
+      id="Main"
+      component={Main}
+      durationInFrames={V.durationInFrames}
+      fps={V.fps}
+      width={V.width}
+      height={V.height}
+    />
     {KEYFRAMES.map(([id, Comp]) => (
       <Composition
         key={id}
