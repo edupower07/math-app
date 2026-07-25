@@ -1,0 +1,5 @@
+node_modules/
+out/
+# フォント woff2 は約9.6MBあるので追跡しない。
+# scripts/fetch-fonts.py で再取得できる（fonts.googleapis.com は許可ドメイン）。
+public/fonts/

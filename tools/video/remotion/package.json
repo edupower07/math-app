@@ -1,0 +1,23 @@
+{
+  "name": "kazu-himitsu-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "「名探偵！かずのひみつ」紹介動画（90秒）の Remotion プロジェクト",
+  "scripts": {
+    "dev": "remotion studio",
+    "board": "remotion still DesignBoard out/design-board.png --scale=0.5",
+    "stills": "node scripts/render-stills.mjs",
+    "render": "remotion render Main out/main.mp4 --concurrency=2"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.499",
+    "@remotion/renderer": "4.0.499",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.499"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
