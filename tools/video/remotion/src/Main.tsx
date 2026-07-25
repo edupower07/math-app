@@ -8,6 +8,7 @@ import { SuspectCounter, NarrowBar, BigStat } from "./components/Counter";
 import { ClueCard } from "./components/ClueCard";
 import { LogoLanding, BigTitle, SectionLabel } from "./components/Title";
 import { PanelFootage, FullFootage } from "./components/Footage";
+import { Soundtrack } from "./Soundtrack";
 
 /* ============================================================
  *  90秒の本編。カット割りは DESIGN.md §4 の表と1対1で対応する。
@@ -103,6 +104,8 @@ const FEATURES: [string, string][] = [
 export const Main: React.FC = () => (
   <Fonts>
     <Backdrop>
+      <Soundtrack />
+
       {/* #1 つかみ：単元の提示 */}
       <Sequence durationInFrames={s(3)}>
         <Flare />

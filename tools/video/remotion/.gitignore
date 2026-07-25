@@ -6,3 +6,6 @@ public/fonts/
 # 画面録画（約23MB）も追跡しない。
 # tools/video/recorder_v4.py で決定論的に撮り直せる。
 public/footage/
+# 音源も追跡しない（BGMは提供素材、ナレーションは録り物）。
+# scripts/build-audio.py で元ファイルから作り直せる。
+public/audio/
