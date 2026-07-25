@@ -292,13 +292,13 @@ def s09_solved(st: Stage):
     st.wait(300)
     st.zin(st.cell(24), 3.0, 0.9)
     st.ring(st.cell(24))
-    st.wait(1500)
+    st.wait(2000)
     st.ringoff()
     st.zout(0.7)
     st.wait_overlay()
     st.wait(300)
     st.zin(".overlay-card", 0.32, 0.8)
-    st.wait(1600)
+    st.wait(4000)  # 決めの画は長めに持たせる（編集で切り出す余裕をつくる）
 
 
 def s11_rankup(st: Stage):
@@ -320,7 +320,7 @@ def s11_rankup(st: Stage):
     st.to_home()
     st.nav(".folder.c-dex", "dex")
     st.zin(".dex-map", 0.03, 0.9)
-    st.wait(1600)
+    st.wait(6500)  # 解禁マップが主題。6秒のカットに使えるだけ持たせる
 
 
 def s12_highlight(st: Stage):
@@ -329,9 +329,9 @@ def s12_highlight(st: Stage):
     st.js("document.getElementById('hlA').value=6; document.getElementById('hlB').value=8;")
     st.zin("#screen-highlight .case-paper", 0.02, 0.72)
     st.click(".hl-inputs .big-btn", move=480, after=900)
-    st.wait(1500)
+    st.wait(2500)
     st.zin("#hlQuestion", 0.10, 0.8)
-    st.wait(1400)
+    st.wait(4000)
 
 
 def s13_create(st: Stage):
@@ -341,15 +341,17 @@ def s13_create(st: Stage):
     st.wait(300)
     for sel in ["#addHintRow .add-chip:nth-child(4)", "#addHintRow .add-chip:nth-child(5)"]:
         st.click(sel, move=440, after=750, quiet=True)
-    st.zin(".create-wrap", 0.02, 0.72)
-    st.wait(1800)
+    # click() は対象が画面外だと空振り防止でズームを戻す。そのままだと
+    # 引いた絵で終わってしまうので、決めの画に寄り直してから持たせる。
+    st.zin(".create-wrap", 0.10, 0.75)
+    st.wait(4500)
 
 
 def s14_group(st: Stage):
     """#14 グループ対決のスコアボード"""
     st.nav(".folder.c-group", "group")
     st.zin("#screen-group .case-paper", 0.02, 0.75)
-    st.wait(2400)
+    st.wait(5000)
 
 
 SCENES = {

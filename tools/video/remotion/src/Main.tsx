@@ -211,7 +211,7 @@ export const Main: React.FC = () => (
       <Sequence from={s(43)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s09.mp4" startAtSec={13.8} />
+            <FullFootage src="footage/s09.mp4" startAtSec={17.0} />
           </AbsoluteFill>
         </FadeIn>
         <Sequence from={s(1.2)} durationInFrames={s(4.8)}>
@@ -245,7 +245,7 @@ export const Main: React.FC = () => (
       <Sequence from={s(55)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s11.mp4" startAtSec={21.5} />
+            <FullFootage src="footage/s11.mp4" startAtSec={26.5} />
           </AbsoluteFill>
         </FadeIn>
         <SectionLabel no="FILE No.005" title="解くほど、使える手がかりが増える" />
@@ -256,7 +256,7 @@ export const Main: React.FC = () => (
       <Sequence from={s(61)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s12.mp4" startAtSec={3.5} />
+            <FullFootage src="footage/s12.mp4" startAtSec={7.4} />
           </AbsoluteFill>
         </FadeIn>
         <TelopBar text={<><G>公倍数・公約数</G>は、重ねて目で見て確かめる。</>} />
@@ -266,7 +266,7 @@ export const Main: React.FC = () => (
       <Sequence from={s(67)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s13.mp4" startAtSec={3.5} />
+            <FullFootage src="footage/s13.mp4" startAtSec={6.5} />
           </AbsoluteFill>
         </FadeIn>
         <TelopBar text={<>自分で<G>挑戦状</G>をつくって、なかまに解かせる。</>} />
@@ -277,7 +277,7 @@ export const Main: React.FC = () => (
       <Sequence from={s(73)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s14.mp4" startAtSec={1.2} />
+            <FullFootage src="footage/s14.mp4" startAtSec={3.4} />
           </AbsoluteFill>
         </FadeIn>
         <TelopBar text={<>クラスみんなでの<G>対戦</G>にも。</>} />
