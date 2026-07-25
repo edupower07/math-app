@@ -51,8 +51,34 @@ def run(args: list[str]) -> None:
         sys.exit(r.stderr[-1500:])
 
 
+def audible_end(path: Path) -> float:
+    """曲が実際に鳴り終わる時刻。末尾の無音は尺に数えない。
+
+    ここを見落とすと「無音ごと引き伸ばす」ことになり、動画の締めが
+    そのぶん無音になる（一度これをやった）。
+    """
+    r = subprocess.run(
+        [ffmpeg(), "-i", str(path), "-af",
+         "silencedetect=noise=-50dB:d=0.5", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    total = duration_of(path)
+    starts = [
+        float(line.split("silence_start:")[1].strip())
+        for line in r.stderr.splitlines() if "silence_start:" in line
+    ]
+    # 末尾まで続く無音があれば、その開始時刻が実質の終わり
+    for st in reversed(starts):
+        if total - st > 0.4:
+            return st
+    return total
+
+
 def build_bgm(src: Path) -> None:
-    dur = duration_of(src)
+    raw = duration_of(src)
+    dur = audible_end(src)
+    if dur < raw - 0.05:
+        print(f"末尾の無音 {raw - dur:.2f}s を除外（{raw:.2f}s -> {dur:.2f}s）")
     tempo = dur / TARGET_SEC
     if not 0.5 <= tempo <= 2.0:
         sys.exit(
@@ -61,9 +87,11 @@ def build_bgm(src: Path) -> None:
         )
     AUDIO.mkdir(parents=True, exist_ok=True)
     dst = AUDIO / "bgm.mp3"
-    print(f"BGM {dur:.2f}s -> {TARGET_SEC}s (atempo={tempo:.5f})")
+    print(f"BGM {dur:.2f}s -> {TARGET_SEC}s (atempo={tempo:.5f}, "
+          f"{(1 - tempo) * 100:.1f}% ゆっくり)")
     run([
         ffmpeg(), "-y", "-v", "error", "-i", str(src), "-vn",
+        "-t", f"{dur:.3f}",  # 無音を含めずに引き伸ばす
         "-af", f"atempo={tempo:.5f},loudnorm=I={BGM_LUFS}:TP={TRUE_PEAK}:LRA=11,apad",
         "-t", str(TARGET_SEC), "-ar", "48000", "-ac", "2",
         "-c:a", "libmp3lame", "-b:a", "192k", str(dst),
