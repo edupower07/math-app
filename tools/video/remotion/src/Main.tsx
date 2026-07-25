@@ -7,7 +7,6 @@ import { TelopBar, G, Note } from "./components/Telop";
 import { SuspectCounter, NarrowBar, BigStat } from "./components/Counter";
 import { ClueCard } from "./components/ClueCard";
 import { LogoLanding, BigTitle, SectionLabel } from "./components/Title";
-import { SolvedStamp } from "./components/Stamp";
 import { PanelFootage, FullFootage } from "./components/Footage";
 
 /* ============================================================
@@ -207,20 +206,15 @@ export const Main: React.FC = () => (
         />
       </Sequence>
 
-      {/* #9 解決 */}
+      {/* #9 解決
+          アプリの解決モーダル自体が「解決」スタンプを持っているので、
+          Remotion 側でスタンプを重ねない（同じ判子が2つ出てしまう）。 */}
       <Sequence from={s(43)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s09.mp4" startAtSec={17.0} />
+            <FullFootage src="footage/s09.mp4" startAtSec={21.3} />
           </AbsoluteFill>
         </FadeIn>
-        <Sequence from={s(1.2)} durationInFrames={s(4.8)}>
-          <AbsoluteFill
-            style={{ justifyContent: "flex-start", alignItems: "flex-end", padding: 90 }}
-          >
-            <SolvedStamp />
-          </AbsoluteFill>
-        </Sequence>
         <div style={{ position: "absolute", left: 84, top: 74 }}>
           <SuspectCounter from={1} to={1} />
         </div>
@@ -241,14 +235,15 @@ export const Main: React.FC = () => (
         <Note>問題は「基本の手がかりで必ず一意に絞れる」ことを保証して生成しています</Note>
       </Sequence>
 
-      {/* #11 解禁マップ */}
+      {/* #11 解禁マップ
+          素材が全面に情報を持っているので章ラベルは置かない（見出しが二重になる）。
+          テロップに最下段がかからないよう、少しだけ縮めて上に寄せる。 */}
       <Sequence from={s(55)} durationInFrames={s(6)}>
         <FadeIn>
-          <AbsoluteFill>
+          <AbsoluteFill style={{ transform: "translateY(-52px) scale(0.90)" }}>
             <FullFootage src="footage/s11.mp4" startAtSec={26.5} />
           </AbsoluteFill>
         </FadeIn>
-        <SectionLabel no="FILE No.005" title="解くほど、使える手がかりが増える" />
         <TelopBar text={<>解決するほど<G>探偵レベル</G>が上がり、使える手がかりが増える。</>} />
       </Sequence>
 
@@ -256,7 +251,9 @@ export const Main: React.FC = () => (
       <Sequence from={s(61)} durationInFrames={s(6)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s12.mp4" startAtSec={7.4} />
+            {/* #hlQuestion に寄った区間はグリッド上部が切れるので、
+                パネル全体が入っている手前の区間を使う */}
+            <FullFootage src="footage/s12.mp4" startAtSec={5.4} />
           </AbsoluteFill>
         </FadeIn>
         <TelopBar text={<><G>公倍数・公約数</G>は、重ねて目で見て確かめる。</>} />
