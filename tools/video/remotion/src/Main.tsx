@@ -107,7 +107,7 @@ export const Main: React.FC = () => (
       <Soundtrack />
 
       {/* #1 つかみ：単元の提示 */}
-      <Sequence durationInFrames={s(3)}>
+      <Sequence durationInFrames={s(7)}>
         <Flare />
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <div
@@ -125,7 +125,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #2 子どものつぶやきを巨大明朝で */}
-      <Sequence from={s(3)} durationInFrames={s(4)}>
+      <Sequence from={s(7)} durationInFrames={s(4)}>
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <BigTitle sub="——その授業、「事件」にしてみませんか。">
             「倍数って、
@@ -137,7 +137,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #3 ロゴ着地 */}
-      <Sequence from={s(7)} durationInFrames={s(4)}>
+      <Sequence from={s(11)} durationInFrames={s(3.5)}>
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <LogoLanding subtitle="小5・整数の性質／Google Apps Script でうごく学習アプリ" />
         </AbsoluteFill>
@@ -145,10 +145,10 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #4 現場が置かれる */}
-      <Sequence from={s(11)} durationInFrames={s(5)}>
+      <Sequence from={s(14.5)} durationInFrames={s(5.5)}>
         <FadeIn>
           <Investigation
-            footage={{ src: "footage/s04.mp4", startAtSec: 1.5 }}
+            footage={{ src: "footage/s04.mp4", startAtSec: 0.0 }}
             from={0}
             to={50}
             countStartAt={6}
@@ -160,9 +160,9 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #5 手がかりを調べる → 証拠① */}
-      <Sequence from={s(16)} durationInFrames={s(5)}>
+      <Sequence from={s(20)} durationInFrames={s(5.5)}>
         <Investigation
-          footage={{ src: "footage/s05.mp4", startAtSec: 2.0 }}
+          footage={{ src: "footage/s05.mp4", startAtSec: 0.4 }}
           from={50}
           to={50}
           clues={<Clues upto={1} />}
@@ -172,9 +172,9 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #6 合う数を自分でタップ 50 → 25 */}
-      <Sequence from={s(21)} durationInFrames={s(9)}>
+      <Sequence from={s(25.5)} durationInFrames={s(10.5)}>
         <Investigation
-          footage={{ src: "footage/s06.mp4", startAtSec: 3.0, rate: 1.25 }}
+          footage={{ src: "footage/s06.mp4", startAtSec: 3.0, rate: 1.05 }}
           from={50}
           to={25}
           countStartAt={s(2)}
@@ -186,7 +186,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #7 証拠② → 25 → 8 */}
-      <Sequence from={s(30)} durationInFrames={s(7)}>
+      <Sequence from={s(36)} durationInFrames={s(5.5)}>
         <Investigation
           footage={{ src: "footage/s07.mp4", startAtSec: 9.0, rate: 1.15 }}
           from={25}
@@ -198,7 +198,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #8 証拠③ → 8 → 1 */}
-      <Sequence from={s(37)} durationInFrames={s(6)}>
+      <Sequence from={s(41.5)} durationInFrames={s(4)}>
         <Investigation
           footage={{ src: "footage/s08.mp4", startAtSec: 11.0, rate: 1.2 }}
           from={8}
@@ -212,10 +212,10 @@ export const Main: React.FC = () => (
       {/* #9 解決
           アプリの解決モーダル自体が「解決」スタンプを持っているので、
           Remotion 側でスタンプを重ねない（同じ判子が2つ出てしまう）。 */}
-      <Sequence from={s(43)} durationInFrames={s(6)}>
+      <Sequence from={s(45.5)} durationInFrames={s(8)}>
         <FadeIn>
           <AbsoluteFill>
-            <FullFootage src="footage/s09.mp4" startAtSec={21.3} />
+            <FullFootage src="footage/s09.mp4" startAtSec={19.2} />
           </AbsoluteFill>
         </FadeIn>
         <div style={{ position: "absolute", left: 84, top: 74 }}>
@@ -225,7 +225,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #10 かならず解ける根拠 */}
-      <Sequence from={s(49)} durationInFrames={s(6)}>
+      <Sequence from={s(53.5)} durationInFrames={s(5)}>
         <SectionLabel no="FILE No.004" title="なぜ、かならず解けるのか" />
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <BigStat
@@ -241,7 +241,7 @@ export const Main: React.FC = () => (
       {/* #11 解禁マップ
           素材が全面に情報を持っているので章ラベルは置かない（見出しが二重になる）。
           テロップに最下段がかからないよう、少しだけ縮めて上に寄せる。 */}
-      <Sequence from={s(55)} durationInFrames={s(6)}>
+      <Sequence from={s(58.5)} durationInFrames={s(5.5)}>
         <FadeIn>
           <AbsoluteFill style={{ transform: "translateY(-52px) scale(0.90)" }}>
             <FullFootage src="footage/s11.mp4" startAtSec={26.5} />
@@ -251,7 +251,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #12 重ねて分析 */}
-      <Sequence from={s(61)} durationInFrames={s(6)}>
+      <Sequence from={s(64)} durationInFrames={s(5.5)}>
         <FadeIn>
           <AbsoluteFill>
             {/* #hlQuestion に寄った区間はグリッド上部が切れるので、
@@ -263,7 +263,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #13 挑戦状づくり */}
-      <Sequence from={s(67)} durationInFrames={s(6)}>
+      <Sequence from={s(69.5)} durationInFrames={s(5)}>
         <FadeIn>
           <AbsoluteFill>
             <FullFootage src="footage/s13.mp4" startAtSec={6.5} />
@@ -274,7 +274,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #14 グループ対決 */}
-      <Sequence from={s(73)} durationInFrames={s(6)}>
+      <Sequence from={s(74.5)} durationInFrames={s(4)}>
         <FadeIn>
           <AbsoluteFill>
             <FullFootage src="footage/s14.mp4" startAtSec={3.4} />
@@ -284,7 +284,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #15 6つの機能 */}
-      <Sequence from={s(79)} durationInFrames={s(6)}>
+      <Sequence from={s(78.5)} durationInFrames={s(4.5)}>
         <SectionLabel no="FILE No.006" title="6つの機能" />
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <div
@@ -323,7 +323,7 @@ export const Main: React.FC = () => (
       </Sequence>
 
       {/* #16 締め */}
-      <Sequence from={s(85)} durationInFrames={s(5)}>
+      <Sequence from={s(83)} durationInFrames={s(7)}>
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", gap: 46 }}>
           <LogoLanding subtitle="導入〜まとめ、そのまま授業で。" />
           <div style={{ display: "flex", gap: 22 }}>

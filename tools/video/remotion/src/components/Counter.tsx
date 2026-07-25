@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame, interpolate, Easing, spring, useVideoConfig } from "remotion";
-import { C, F } from "../theme";
+import { C, F, W } from "../theme";
 
 /**
  * 「容ぎ者 ◯人」カウンタ。
@@ -46,6 +46,7 @@ export const SuspectCounter: React.FC<{
       <span
         style={{
           fontFamily: F.display,
+          fontWeight: W.display,
           fontSize: 34,
           letterSpacing: 6,
           color: C.manila,
@@ -65,7 +66,9 @@ export const SuspectCounter: React.FC<{
       >
         {value}
       </span>
-      <span style={{ fontFamily: F.display, fontSize: 46, color: C.paper2 }}>人</span>
+      <span style={{ fontFamily: F.display, fontWeight: W.display, fontSize: 46, color: C.paper2 }}>
+        人
+      </span>
     </div>
   );
 };
@@ -145,7 +148,15 @@ export const BigStat: React.FC<{
 
   return (
     <div style={{ textAlign: "center" }}>
-      <div style={{ fontFamily: F.display, fontSize: 44, letterSpacing: 10, color: C.manila }}>
+      <div
+        style={{
+          fontFamily: F.display,
+          fontWeight: W.display,
+          fontSize: 44,
+          letterSpacing: 10,
+          color: C.manila,
+        }}
+      >
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
@@ -163,7 +174,15 @@ export const BigStat: React.FC<{
         <span style={{ fontFamily: F.mono, fontSize: 120, color: C.gold }}>{suffix}</span>
       </div>
       {caption ? (
-        <div style={{ marginTop: 18, fontFamily: F.body, fontSize: 34, color: C.paper2 }}>
+        <div
+          style={{
+            marginTop: 18,
+            fontFamily: F.body,
+            fontWeight: W.body,
+            fontSize: 34,
+            color: C.paper2,
+          }}
+        >
           {caption}
         </div>
       ) : null}

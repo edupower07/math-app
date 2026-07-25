@@ -16,12 +16,13 @@ import sys
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120 Safari/537.36")
 
-# アプリ（src/styles.html）が使っているフォントと揃える
+# 動画用の書体。アプリ（src/styles.html）より一段ミステリー寄りに振ってある。
+# アプリ画面は録画素材の中に本来の書体で写るので、そちらとの地続き感は保たれる。
 FAMILIES = [
-    "Zen+Antique",              # 見出し・ロゴ（明朝）
-    "Yusei+Magic",              # 本文・テロップ
-    "Special+Elite",            # 数字（タイプライター）
-    "Zen+Maru+Gothic:wght@500;700",  # UI
+    "Shippori+Mincho+B1:wght@600;700;800",  # 見出し・ロゴ（極太明朝）
+    "Special+Elite",                        # 数字（タイプライター＝捜査ファイル）
+    "Zen+Kaku+Gothic+New:wght@500;700;900", # テロップ本文
+    "Zen+Maru+Gothic:wght@500;700",         # アプリUIを再現するチップ類
 ]
 
 DEST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "fonts")

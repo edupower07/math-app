@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
-import { C, F } from "../theme";
+import { C, F, W } from "../theme";
 
 /**
  * 「解決」スタンプ。アプリの .solved-stamp.slam（rotate12deg / scale3.4 → 1）を
@@ -38,8 +38,9 @@ export const SolvedStamp: React.FC<{
     >
       <span
         style={{
-          fontFamily: F.display,
-          fontSize: 118,
+          fontFamily: F.displayHeavy,
+          fontWeight: W.displayHeavy,
+          fontSize: 112,
           lineHeight: 1.15,
           letterSpacing: 10,
           color: C.stamp,

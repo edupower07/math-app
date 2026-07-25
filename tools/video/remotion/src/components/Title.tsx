@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
-import { C, F } from "../theme";
+import { C, F, W } from "../theme";
 
 /**
  * ロゴ着地。参考動画の「ロゴがドンと落ちる（縮みながら出現）」をそのまま拝借。
@@ -53,8 +53,9 @@ export const LogoLanding: React.FC<{
         >
           <span
             style={{
-              fontFamily: F.display,
-              fontSize: 128,
+              fontFamily: F.displayHeavy,
+              fontWeight: W.displayHeavy,
+              fontSize: 122,
               lineHeight: 1.1,
               color: C.paper,
               letterSpacing: 4,
@@ -80,6 +81,7 @@ export const LogoLanding: React.FC<{
             opacity: subP,
             transform: `translateY(${(1 - subP) * 14}px)`,
             fontFamily: F.body,
+            fontWeight: W.body,
             fontSize: 40,
             letterSpacing: 3,
             color: C.manila,
@@ -112,8 +114,9 @@ export const BigTitle: React.FC<{
     <div style={{ textAlign: "center", opacity: p }}>
       <div
         style={{
-          fontFamily: F.display,
-          fontSize: 150,
+          fontFamily: F.displayHeavy,
+          fontWeight: W.displayHeavy,
+          fontSize: 146,
           lineHeight: 1.22,
           color: C.paper,
           letterSpacing: 2,
@@ -128,6 +131,7 @@ export const BigTitle: React.FC<{
           style={{
             marginTop: 30,
             fontFamily: F.body,
+            fontWeight: W.body,
             fontSize: 44,
             color: C.goldLight,
             opacity: interpolate(frame - appearAt, [10, 22], [0, 1], {
@@ -185,6 +189,7 @@ export const SectionLabel: React.FC<{
       <span
         style={{
           fontFamily: F.display,
+          fontWeight: W.display,
           fontSize: 44,
           color: C.paper,
           textShadow: "0 3px 10px rgba(0,0,0,.7)",

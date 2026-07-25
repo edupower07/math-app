@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame, interpolate, Easing } from "remotion";
-import { C, F } from "../theme";
+import { C, F, W } from "../theme";
 
 /**
  * 画面下の常時テロップバー（参考動画の「ナレーション字幕バー」役）。
@@ -67,6 +67,7 @@ export const TelopBar: React.FC<{
         <span
           style={{
             fontFamily: F.body,
+            fontWeight: W.body,
             fontSize: 42,
             lineHeight: 1.35,
             color: C.paper,
@@ -108,6 +109,7 @@ export const Note: React.FC<{
           : { position: "absolute", right: 60, bottom }),
         opacity: p * 0.95,
         fontFamily: F.body,
+        fontWeight: 500,
         fontSize: 25,
         color: C.manila,
         background: "rgba(20,15,9,.6)",

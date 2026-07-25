@@ -1,56 +1,77 @@
 import React from "react";
 import { Audio, Sequence, staticFile, interpolate } from "remotion";
-import { V, s } from "./theme";
+import { s } from "./theme";
 
 /* ============================================================
  *  音まわり。
  *
- *  BGM はユーザー提供の1曲。元は 84.6秒で、79.6秒あたりから自前で
- *  フェードアウトして終わる作りだった。そのまま置くと締めの8秒が
- *  無音になるので、テンポを 6% だけ緩めて 90秒ちょうどに合わせてある
- *  （scripts/build-audio.py）。ループの継ぎ目が出ず、曲自身の
- *  フェードアウトがそのまま動画の終わりに着地する。
+ *  BGM はユーザー提供の1曲。末尾の無音を落としたうえで、テンポだけを
+ *  緩めて（音程は保つ）90秒ちょうどに合わせてある。曲自身のフェード
+ *  アウトがそのまま動画の終わりに着地する（scripts/build-audio.py）。
  *
- *  ナレーションは NARRATION に足すだけで、
- *  ・その区間だけ BGM が自動で下がる（ダッキング）
- *  ・音声が無ければ BGM だけが鳴る
- *  という形にしてある。台本は tools/video/NARRATION.md。
+ *  音量の設計：
+ *    BGM        -20 LUFS
+ *    ナレーション -16 LUFS（BGMより4LU上）
+ *    声が乗る区間は BGM を 38% まで下げる（≒ -8dB）。
+ *    結果、声と音楽の差は約12LUになり、声がはっきり抜ける。
+ *
+ *  台本と各行の内容は tools/video/NARRATION.md。
  * ============================================================ */
 
 export type NarrationClip = {
-  /** DESIGN.md §4 の カット番号 */
+  /** DESIGN.md §4 のカット番号 */
   cut: number;
-  /** 読み始める時刻（秒）。ふつうはカットの開始秒と同じ */
+  /** 読み始める時刻（秒） */
   atSec: number;
-  /** public/audio/ からの相対パス */
-  src: string;
+  /** 実測の尺（秒）。ダッキングを声の長さぴったりに効かせるために持つ */
+  durSec: number;
 };
 
 /**
- * ナレーション音声。まだ受け取っていないので空。
- * 例：{ cut: 1, atSec: 0.2, src: "audio/vo/01.mp3" }
+ * カットの頭から 0.25秒おいて読み始める。
+ * テロップのフェードイン（約0.27秒）と重なって、絵と声が同時に立ち上がる。
  */
-export const NARRATION: NarrationClip[] = [];
+const LEAD_IN = 0.25;
 
-/** ナレーション中に BGM を下げる量（0〜1）と、上げ下げにかける時間 */
-const DUCK_TO = 0.32;
-const DUCK_RAMP = s(0.35);
-/** ナレーション1本あたりの想定尺。実ファイルが短くても長すぎない程度に */
-const DUCK_HOLD = s(3.2);
+/** 尺は build-audio 後の実測値。カットの尺には必ず収まっている */
+export const NARRATION: NarrationClip[] = [
+  { cut: 1, atSec: 0.0, durSec: 6.65 },
+  { cut: 2, atSec: 7.0, durSec: 3.24 },
+  { cut: 3, atSec: 11.0, durSec: 2.81 },
+  { cut: 4, atSec: 14.5, durSec: 5.06 },
+  { cut: 5, atSec: 20.0, durSec: 4.82 },
+  { cut: 6, atSec: 25.5, durSec: 5.23 },
+  { cut: 7, atSec: 36.0, durSec: 3.7 },
+  { cut: 8, atSec: 41.5, durSec: 1.8 },
+  { cut: 9, atSec: 45.5, durSec: 5.76 },
+  { cut: 10, atSec: 53.5, durSec: 3.79 },
+  { cut: 11, atSec: 58.5, durSec: 4.82 },
+  { cut: 12, atSec: 64.0, durSec: 4.42 },
+  { cut: 13, atSec: 69.5, durSec: 3.89 },
+  { cut: 14, atSec: 74.5, durSec: 2.04 },
+  { cut: 15, atSec: 78.5, durSec: 3.05 },
+  { cut: 16, atSec: 83.0, durSec: 3.96 },
+];
+
+/** 声が乗る区間の BGM の音量と、上げ下げにかける時間 */
+const DUCK_TO = 0.38;
+const DUCK_RAMP = s(0.4);
 
 /** その時刻に BGM をどこまで下げるか */
 const duckAt = (frame: number): number => {
   let level = 1;
   for (const n of NARRATION) {
-    const start = s(n.atSec);
-    const end = start + DUCK_HOLD;
-    const v = interpolate(
-      frame,
-      [start - DUCK_RAMP, start, end, end + DUCK_RAMP],
-      [1, DUCK_TO, DUCK_TO, 1],
-      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+    const start = s(n.atSec + LEAD_IN);
+    const end = start + s(n.durSec);
+    level = Math.min(
+      level,
+      interpolate(
+        frame,
+        [start - DUCK_RAMP, start, end, end + DUCK_RAMP],
+        [1, DUCK_TO, DUCK_TO, 1],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+      )
     );
-    level = Math.min(level, v);
   }
   return level;
 };
@@ -70,11 +91,11 @@ export const Soundtrack: React.FC = () => (
 
     {NARRATION.map((n) => (
       <Sequence
-        key={`${n.cut}-${n.src}`}
-        from={s(n.atSec)}
-        durationInFrames={V.durationInFrames - s(n.atSec)}
+        key={n.cut}
+        from={s(n.atSec + LEAD_IN)}
+        durationInFrames={s(n.durSec) + 2}
       >
-        <Audio src={staticFile(n.src)} />
+        <Audio src={staticFile(`audio/vo/${String(n.cut).padStart(2, "0")}.mp3`)} />
       </Sequence>
     ))}
   </>

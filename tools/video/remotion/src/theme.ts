@@ -39,15 +39,29 @@ export const C = {
   },
 } as const;
 
+/**
+ * 書体はアプリより一段ミステリー寄りに振ってある。
+ * アプリ画面そのものは録画素材の中に本来の書体で写るので、地続き感は保たれる。
+ */
 export const F = {
-  /** 見出し・ロゴ（明朝）。参考動画の「極太明朝タイトル」役 */
-  display: '"Zen Antique", serif',
+  /** 見出し・ロゴ。参考動画の「極太明朝タイトル」役 */
+  display: '"Shippori Mincho B1", "Zen Old Mincho", serif',
+  /** 巨大タイトルの一番強いところ。同じ明朝の最太ウェイトで押す */
+  displayHeavy: '"Shippori Mincho B1", serif',
   /** 数字（タイプライター）。カウンタ・％・事件番号は必ずこれ */
   mono: '"Special Elite", monospace',
-  /** テロップ・本文 */
-  body: '"Yusei Magic", sans-serif',
-  /** UI 再現パーツ */
+  /** テロップ・本文。明朝だと小さい字が潰れるので角ゴシックで締める */
+  body: '"Zen Kaku Gothic New", sans-serif',
+  /** アプリUIを再現するチップ類はアプリと同じ書体のまま */
   ui: '"Zen Maru Gothic", sans-serif',
+} as const;
+
+/** 明朝は太さで表情が変わる。数値を散らさないようここに集約する */
+export const W = {
+  display: 700,
+  displayHeavy: 800,
+  body: 700,
+  bodyStrong: 900,
 } as const;
 
 /** 16:9 を基準に設計し、9:16 は同じ部品を再配置して作る */

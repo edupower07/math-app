@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
-import { C, F, paperTexture } from "../theme";
+import { C, F, W, paperTexture } from "../theme";
 
 export type CatKey = keyof typeof C.cat;
 
@@ -79,6 +79,7 @@ export const ClueCard: React.FC<{
       <span
         style={{
           fontFamily: F.body,
+          fontWeight: W.body,
           fontSize: 31,
           lineHeight: 1.3,
           color: C.ink,
