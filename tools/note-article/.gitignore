@@ -1,0 +1,5 @@
+# フォント woff2 は約9.6MBあるので追跡しない。
+# fetch-app-fonts.py で再取得できる（fonts.googleapis.com は許可ドメイン）。
+fonts/
+# build_preview.py が生成する単体HTML。フォントの絶対パスを含み環境依存。
+preview.html
